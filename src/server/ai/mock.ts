@@ -1,25 +1,38 @@
 import { readFile } from "node:fs/promises";
 
 import type { AiProvider, ClassificationResult, TranscriptionResult } from "@/src/server/ai/types";
+import { LOOP_DEMO_PRD, buildDemoExtraction } from "@/src/server/demo/immersiveDemo";
 import type { ContributionIntent } from "@/src/server/repo/contributions";
 
 export class MockAiProvider implements AiProvider {
   async transcribeAudio(input: { absolutePath: string }): Promise<TranscriptionResult> {
-    const bytes = await readFile(input.absolutePath);
+    await readFile(input.absolutePath);
     return {
-      transcript: `[[mock transcription]] (${bytes.length} bytes)`,
+      transcript: LOOP_DEMO_PRD.transcript,
     };
   }
 
   async classifyText(input: { text: string }): Promise<ClassificationResult> {
     const text = input.text.trim();
-    const intent = classifyHeuristic(text);
+    const looksLikeDemoCapture = shouldUseDemoDraft(text);
+    const intent = looksLikeDemoCapture ? "idea" : classifyHeuristic(text);
     return {
       intent,
-      confidence: text.length ? 0.55 : 0.1,
-      extractedJson: text.length ? { keywords: extractKeywords(text) } : null,
+      confidence: text.length ? (looksLikeDemoCapture ? 0.94 : 0.55) : 0.1,
+      extractedJson: text.length ? (looksLikeDemoCapture ? buildDemoExtraction(text) : { keywords: extractKeywords(text) }) : null,
     };
   }
+}
+
+function shouldUseDemoDraft(text: string) {
+  const t = text.toLowerCase();
+  return (
+    text.length > 320 &&
+    t.includes("product manager") &&
+    t.includes("stakeholder") &&
+    (t.includes("record") || t.includes("transcript")) &&
+    (t.includes("artifact") || t.includes("prd"))
+  );
 }
 
 function classifyHeuristic(text: string): ContributionIntent {
@@ -51,4 +64,3 @@ function extractKeywords(text: string): string[] {
     .slice(0, 8)
     .map(([w]) => w);
 }
-

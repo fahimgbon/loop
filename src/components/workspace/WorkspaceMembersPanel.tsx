@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/src/components/Button";
 import { Input } from "@/src/components/Input";
+import { WorkspaceMemberProfileSheet } from "@/src/components/workspace/WorkspaceMemberProfileSheet";
 
 type Member = {
   userId: string;
@@ -18,6 +19,7 @@ export function WorkspaceMembersPanel(props: {
   isAdmin: boolean;
 }) {
   const [members, setMembers] = useState<Member[]>(props.initialMembers);
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
@@ -29,6 +31,8 @@ export function WorkspaceMembersPanel(props: {
   useEffect(() => {
     setMembers(props.initialMembers);
   }, [props.initialMembers]);
+
+  const selectedMember = members.find((member) => member.userId === selectedMemberId) ?? null;
 
   async function addMember() {
     setBusy(true);
@@ -67,17 +71,19 @@ export function WorkspaceMembersPanel(props: {
   }
 
   return (
-    <div className="rounded-xl border border-white/60 bg-white/50 p-4">
+    <div id="workspace-members-panel" className="rounded-xl border border-white/60 bg-white/50 p-4">
       <div className="text-sm font-medium">Workspace members</div>
       <div className="mt-1 text-xs text-muted">
-        Multiple accounts can work in this workspace. Existing users can be added by email.
+        Open any teammate to view their profile. Add existing users by email.
       </div>
 
       <div className="mt-3 grid gap-2">
         {members.map((member) => (
-          <div
+          <button
             key={member.userId}
-            className="flex items-center justify-between gap-2 rounded-lg border border-white/60 bg-white/70 px-3 py-2"
+            type="button"
+            onClick={() => setSelectedMemberId(member.userId)}
+            className="flex items-center justify-between gap-2 rounded-lg border border-white/60 bg-white/70 px-3 py-2 text-left transition hover:border-slate-200 hover:bg-white"
           >
             <div className="min-w-0">
               <div className="truncate text-sm font-medium text-slate-900">{member.name}</div>
@@ -86,7 +92,7 @@ export function WorkspaceMembersPanel(props: {
             <span className="rounded-full border border-white/70 bg-white/80 px-2 py-0.5 text-[11px] uppercase tracking-[0.16em] text-slate-700">
               {member.role}
             </span>
-          </div>
+          </button>
         ))}
       </div>
 
@@ -133,6 +139,13 @@ export function WorkspaceMembersPanel(props: {
           {notice ? <div className="mt-2 text-xs text-emerald-600">{notice}</div> : null}
         </div>
       ) : null}
+
+      <WorkspaceMemberProfileSheet
+        member={selectedMember}
+        open={!!selectedMember}
+        onClose={() => setSelectedMemberId(null)}
+        workspaceSlug={props.workspaceSlug}
+      />
     </div>
   );
 }

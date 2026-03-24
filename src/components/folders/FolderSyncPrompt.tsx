@@ -57,7 +57,7 @@ export function FolderSyncPrompt(props: { artifactId: string }) {
   if (!preview?.hasFolder || !preview.outdated) return null;
 
   return (
-    <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-900">
+    <div className="rounded-2xl border border-amber-200/80 bg-amber-50/70 px-4 py-3 text-sm text-amber-900">
       <div className="font-medium">
         Folder structure update available
         {preview.folderName ? ` · ${preview.folderName}` : ""}

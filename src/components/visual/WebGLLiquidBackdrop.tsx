@@ -53,10 +53,10 @@ export function WebGLLiquidBackdrop(props: { audioLevel: number; active?: boolea
       }
 
       vec3 palette(float t) {
-        vec3 a = vec3(0.94, 0.96, 0.99);
-        vec3 b = vec3(0.20, 0.55, 1.00);
-        vec3 c = vec3(0.95, 0.25, 0.65);
-        vec3 d = vec3(0.75, 0.92, 0.45);
+        vec3 a = vec3(0.96, 0.94, 1.00);
+        vec3 b = vec3(0.30, 0.42, 0.96);
+        vec3 c = vec3(0.78, 0.28, 0.62);
+        vec3 d = vec3(0.22, 0.36, 0.68);
         return a + b * cos(6.28318 * (c * t + d));
       }
 
@@ -93,15 +93,15 @@ export function WebGLLiquidBackdrop(props: { audioLevel: number; active?: boolea
         float hue = fbm(q * 1.2 + t * 0.08) + shade * 0.55;
 
         vec3 col = palette(hue);
-        col = mix(col, vec3(1.0), 0.35 - shade * 0.22);
-        col += vec3(0.25, 0.35, 0.55) * glow;
+        col = mix(col, vec3(1.0), 0.42 - shade * 0.16);
+        col += vec3(0.35, 0.25, 0.55) * glow;
 
-        float vignette = smoothstep(1.2, 0.2, length(p));
-        col *= vignette;
+        float vignette = smoothstep(1.45, 0.15, length(p));
+        col *= mix(0.9, 1.0, vignette);
 
         // Grain
         float g = hash(uv * uResolution + fract(t) * 13.37);
-        col += (g - 0.5) * 0.04;
+        col += (g - 0.5) * 0.02;
 
         gl_FragColor = vec4(col, 1.0);
       }
@@ -201,7 +201,7 @@ export function WebGLLiquidBackdrop(props: { audioLevel: number; active?: boolea
   return (
     <canvas
       ref={canvasRef}
-      className="absolute inset-0 -z-10 h-full w-full opacity-80"
+      className="pointer-events-none absolute inset-0 -z-10 h-full w-full opacity-70 mix-blend-screen"
       aria-hidden="true"
     />
   );

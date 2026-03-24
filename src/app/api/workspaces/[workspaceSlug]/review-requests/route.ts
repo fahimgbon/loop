@@ -52,6 +52,13 @@ export async function POST(request: Request, context: { params: Promise<{ worksp
     createdBy: session.userId,
   });
 
+  const env = getEnv();
+  const shareUrl = `${env.APP_BASE_URL}/w/${workspaceSlug}/review-requests/${created.id}`;
+  let slackStatus: "posted" | "slack_not_connected" | "channel_not_configured" | "post_failed" =
+    "slack_not_connected";
+  let slackChannelId: string | null = null;
+  let slackTeamName: string | null = null;
+
   // Best-effort Slack post if configured.
   try {
     const [installation, workspace, artifact] = await Promise.all([
@@ -61,13 +68,14 @@ export async function POST(request: Request, context: { params: Promise<{ worksp
     ]);
 
     const channelId = workspace?.default_slack_channel_id ?? null;
+    slackChannelId = channelId;
+    slackTeamName = installation?.slack_team_name ?? null;
+    if (installation && !channelId) slackStatus = "channel_not_configured";
     if (installation && channelId) {
-      const env = getEnv();
-      const link = `${env.APP_BASE_URL}/w/${workspaceSlug}/review-requests/${created.id}`;
       const slack = new WebClient(installation.bot_token);
       const posted = await slack.chat.postMessage({
         channel: channelId,
-        text: `Review request: ${parsed.data.title}\nArtifact: ${(artifact?.title ?? parsed.data.artifactId)}\n${link}\nQuestions:\n• ${(parsed.data.questions ?? []).join("\n• ")}`,
+        text: `Review request: ${parsed.data.title}\nArtifact: ${(artifact?.title ?? parsed.data.artifactId)}\n${shareUrl}\nQuestions:\n• ${(parsed.data.questions ?? []).join("\n• ")}`,
       });
       const ts = typeof posted.ts === "string" ? posted.ts : null;
       if (ts) {
@@ -79,11 +87,21 @@ export async function POST(request: Request, context: { params: Promise<{ worksp
             slackMessageTs: ts,
           }),
         );
+        slackStatus = "posted";
+      } else {
+        slackStatus = "post_failed";
       }
     }
   } catch {
-    // Ignore Slack errors for web-based creation.
+    slackStatus = slackStatus === "channel_not_configured" ? slackStatus : "post_failed";
   }
 
-  return json({ ok: true, reviewRequestId: created.id });
+  return json({
+    ok: true,
+    reviewRequestId: created.id,
+    shareUrl,
+    slackStatus,
+    slackChannelId,
+    slackTeamName,
+  });
 }

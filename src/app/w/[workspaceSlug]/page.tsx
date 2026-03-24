@@ -1,24 +1,34 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import type { ReactNode } from "react";
 
-import { AudioRecorder } from "@/src/components/contributions/AudioRecorder";
-import { getSession } from "@/src/server/auth";
-import { withClient } from "@/src/server/db";
-import { listArtifacts } from "@/src/server/repo/artifacts";
-import { listFolders } from "@/src/server/repo/folders";
-import { listOpenReviewRequests } from "@/src/server/repo/reviewRequests";
-import { getSlackInstallationForWorkspace } from "@/src/server/repo/slackInstallations";
-import { getWorkspaceById } from "@/src/server/repo/workspaces";
-import { listWorkspaceMembers } from "@/src/server/repo/workspaces";
-import { SlackSettingsForm } from "@/src/components/integrations/SlackSettingsForm";
-import { FolderCard } from "@/src/components/folders/FolderCard";
-import { getGoogleInstallationForWorkspace } from "@/src/server/repo/googleInstallations";
-import { GoogleSettingsForm } from "@/src/components/integrations/GoogleSettingsForm";
-import { WorkspaceGuide } from "@/src/components/guide/WorkspaceGuide";
-import { listAnnouncements } from "@/src/server/repo/announcements";
 import { AnnouncementLog } from "@/src/components/announcements/AnnouncementLog";
+import { AudioRecorder } from "@/src/components/contributions/AudioRecorder";
+import { FolderCard } from "@/src/components/folders/FolderCard";
+import { ArtifactGraph } from "@/src/components/graph/ArtifactGraph";
+import { GoogleSettingsForm } from "@/src/components/integrations/GoogleSettingsForm";
+import { SlackSettingsForm } from "@/src/components/integrations/SlackSettingsForm";
 import { AnywhereMeetingCapture } from "@/src/components/meetings/AnywhereMeetingCapture";
 import { WorkspaceMembersPanel } from "@/src/components/workspace/WorkspaceMembersPanel";
+import { WorkspaceTeamSurface } from "@/src/components/workspace/WorkspaceTeamSurface";
+import {
+  CaptureIcon,
+  CommentIcon,
+  FolderIcon,
+  GraphIcon,
+  SparkIcon,
+  UsersIcon,
+} from "@/src/components/icons/LoopIcons";
+import { getSession } from "@/src/server/auth";
+import { withClient } from "@/src/server/db";
+import { listAnnouncements } from "@/src/server/repo/announcements";
+import { listArtifacts } from "@/src/server/repo/artifacts";
+import { listFolders } from "@/src/server/repo/folders";
+import { getGoogleInstallationForWorkspace } from "@/src/server/repo/googleInstallations";
+import { listOpenReviewRequests } from "@/src/server/repo/reviewRequests";
+import { getSlackInstallationForWorkspace } from "@/src/server/repo/slackInstallations";
+import { getWorkspaceById, listWorkspaceMembers } from "@/src/server/repo/workspaces";
+import { getArtifactGraphSnapshot } from "@/src/server/services/artifactGraphService";
 
 export const dynamic = "force-dynamic";
 
@@ -29,101 +39,217 @@ export default async function WorkspacePage(props: { params: Promise<{ workspace
   const { workspaceSlug } = await props.params;
   if (workspaceSlug !== session.workspaceSlug) redirect(`/w/${session.workspaceSlug}`);
 
-  const [artifacts, reviewRequests, folders] = await Promise.all([
-    withClient((client) => listArtifacts(client, session.workspaceId)),
-    withClient((client) => listOpenReviewRequests(client, session.workspaceId)),
-    withClient((client) => listFolders(client, session.workspaceId)),
-  ]);
+  const [artifacts, reviewRequests, folders, slack, google, workspace, announcements, members, graph] =
+    await Promise.all([
+      withClient((client) => listArtifacts(client, session.workspaceId)),
+      withClient((client) => listOpenReviewRequests(client, session.workspaceId)),
+      withClient((client) => listFolders(client, session.workspaceId)),
+      withClient((client) => getSlackInstallationForWorkspace(client, session.workspaceId)),
+      withClient((client) => getGoogleInstallationForWorkspace(client, session.workspaceId)),
+      withClient((client) => getWorkspaceById(client, session.workspaceId)),
+      withClient((client) => listAnnouncements(client, session.workspaceId, 25)),
+      withClient((client) => listWorkspaceMembers(client, session.workspaceId)),
+      getArtifactGraphSnapshot({ workspaceId: session.workspaceId }),
+    ]);
 
-  const [slack, google, workspace, announcements, members] = await Promise.all([
-    withClient((client) => getSlackInstallationForWorkspace(client, session.workspaceId)),
-    withClient((client) => getGoogleInstallationForWorkspace(client, session.workspaceId)),
-    withClient((client) => getWorkspaceById(client, session.workspaceId)),
-    withClient((client) => listAnnouncements(client, session.workspaceId, 25)),
-    withClient((client) => listWorkspaceMembers(client, session.workspaceId)),
-  ]);
+  const artifactTitleById = new Map(artifacts.map((artifact) => [artifact.id, artifact.title]));
+  const folderCollections = graph.collections.filter((collection) => collection.kind === "folder");
+  const smartCollections = graph.collections.filter((collection) => collection.kind === "smart");
+  const folderByKey = new Map(folderCollections.map((collection) => [collection.key, collection]));
+  const enrichedFolders = folders.map((folder) => {
+    const collection = folderByKey.get(`folder:${folder.id}`);
+    return {
+      id: folder.id,
+      name: folder.name,
+      updatedAt: folder.updated_at,
+      structureVersion: folder.structure_version,
+      artifactCount: collection?.artifactCount ?? artifacts.filter((artifact) => artifact.folder_id === folder.id).length,
+      chips: collection?.sharedThemes ?? [],
+      lead:
+        collection?.sharedKeywords.length
+          ? `Common signals: ${collection.sharedKeywords.slice(0, 3).join(", ")}`
+          : "A shared structure for artifacts that belong together.",
+    };
+  });
+  const memberSummaries = members.map((member) => ({
+    userId: member.user_id,
+    role: member.role,
+    name: member.name,
+    email: member.email,
+  }));
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-8">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Workspace</h1>
-          <p className="mt-1 text-sm text-muted">
-            Artifacts are the system-of-record. Slack/Meet/Notion are the system-of-flow.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link className="rounded-md border border-white/60 bg-white/40 px-3 py-2 text-sm hover:bg-white/70" href={`/w/${workspaceSlug}/inbox`}>
-            Inbox
-          </Link>
-          <Link className="rounded-md border border-white/60 bg-white/40 px-3 py-2 text-sm hover:bg-white/70" href={`/w/${workspaceSlug}/capture`}>
-            Capture
-          </Link>
-          <Link className="rounded-md border border-white/60 bg-white/40 px-3 py-2 text-sm hover:bg-white/70" href={`/w/${workspaceSlug}/search`}>
-            Search
-          </Link>
-          <Link className="rounded-md border border-white/60 bg-white/40 px-3 py-2 text-sm hover:bg-white/70" href={`/w/${workspaceSlug}/folders`}>
-            Folders
-          </Link>
-          <Link
-            className={[
-              "rounded-md bg-accent px-3 py-2 text-sm font-medium text-white",
-              artifacts.length === 0 ? "guide-ring" : "",
-            ].join(" ")}
-            href={`/w/${workspaceSlug}/artifacts/new`}
-          >
-            New artifact
-          </Link>
-        </div>
-      </div>
+    <main className="px-3 py-3 lg:px-5 lg:py-4">
+      <section className="rounded-[30px] border border-slate-200/80 bg-white/92 p-6 shadow-[0_24px_80px_-56px_rgba(15,23,42,0.28)]">
+        <div className="flex flex-wrap items-start justify-between gap-5">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              <SparkIcon className="h-4 w-4" />
+              Workspace
+            </div>
+            <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-slate-950">
+              {workspace?.name ?? "Loop"}
+            </h1>
+            <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-600">
+              Capture ideas, shape artifacts, and keep shared context visible.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <StatPill icon={<GraphIcon className="h-4 w-4" />} label={`${artifacts.length} artifacts`} />
+              <StatPill icon={<FolderIcon className="h-4 w-4" />} label={`${folders.length} folders`} />
+              <StatPill icon={<CommentIcon className="h-4 w-4" />} label={`${reviewRequests.length} live threads`} />
+              <StatPill icon={<UsersIcon className="h-4 w-4" />} label={`${members.length} collaborators`} />
+            </div>
+          </div>
 
-      <section className="glass mt-6 rounded-xl p-6">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Capture</h2>
-        <p className="mt-1 text-sm text-muted">
-          Record a quick note. It will land in the Inbox unless you attach it to an artifact later.
-        </p>
-        <div className="mt-4">
-          <AudioRecorder workspaceSlug={workspaceSlug} />
-        </div>
-        <div className="mt-4">
-          <AnywhereMeetingCapture
-            workspaceSlug={workspaceSlug}
-            artifacts={artifacts.map((artifact) => ({ id: artifact.id, title: artifact.title }))}
-          />
+          <WorkspaceTeamSurface members={memberSummaries} workspaceSlug={workspaceSlug} variant="summary" />
         </div>
       </section>
 
-      <section className="glass mt-6 rounded-xl p-6">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Integrations</h2>
-        <div className="mt-4 grid gap-4">
-          <div className="rounded-xl border border-white/60 bg-white/50 p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-sm">
-                <div className="font-medium">Slack</div>
-                <div className="text-xs text-muted">
-                  {slack ? `Connected to ${slack.slack_team_name ?? slack.slack_team_id}` : "Not connected"}
-                </div>
-              </div>
-              {slack ? (
-                <a
-                  className="rounded-md border border-white/60 bg-white/40 px-3 py-2 text-sm hover:bg-white/70"
-                  href={`/api/slack/oauth/start?workspaceSlug=${encodeURIComponent(workspaceSlug)}`}
-                >
-                  Reconnect
-                </a>
-              ) : (
-                <a
-                  className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-white"
-                  href={`/api/slack/oauth/start?workspaceSlug=${encodeURIComponent(workspaceSlug)}`}
-                >
-                  Connect Slack
-                </a>
-              )}
+      <div className="mt-5">
+        <ArtifactGraph
+          workspaceSlug={workspaceSlug}
+          graph={graph}
+          mode="overview"
+          title="Network"
+          subtitle="A high-level view of how work is grouped and connected."
+        />
+      </div>
+
+      <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <WorkspaceTeamSurface members={memberSummaries} workspaceSlug={workspaceSlug} variant="grid" />
+
+        <section className="rounded-[28px] border border-slate-200/80 bg-white/92 p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.3)]">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Open threads</div>
+              <div className="mt-1 text-sm text-slate-600">Requests that are currently pulling more than one perspective into the work.</div>
             </div>
-            <p className="mt-3 text-xs text-muted">
-              After connecting, use Slack slash commands: <span className="font-mono">/loop note …</span> and{" "}
-              <span className="font-mono">/loop request</span>.
-            </p>
+            <Link href={`/w/${workspaceSlug}/inbox`} className="text-xs font-medium text-slate-700 hover:text-slate-950">
+              Open inbox
+            </Link>
+          </div>
+          <div className="mt-3 grid gap-2">
+            {reviewRequests.length > 0 ? (
+              reviewRequests.slice(0, 5).map((request) => (
+                <Link
+                  key={request.id}
+                  href={`/w/${workspaceSlug}/review-requests/${request.id}`}
+                  className="rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-3 transition hover:border-slate-300 hover:bg-white"
+                >
+                  <div className="text-sm font-medium text-slate-900">{request.title}</div>
+                  <div className="mt-1 text-xs text-slate-500">
+                    {artifactTitleById.get(request.artifact_id) ?? "Artifact"}
+                    {request.due_at ? ` · Due ${new Date(request.due_at).toLocaleDateString()}` : ""}
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-3 py-4 text-sm text-slate-500">
+                No open threads right now. Create a review request from any artifact to make collaboration visible here.
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
+
+      <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <section className="rounded-[28px] border border-slate-200/80 bg-white/92 p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.3)]">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Shared folders</div>
+              <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-slate-950">Organize work as living collections</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                Folders keep recurring work consistent. Each one below is summarized from the artifacts inside it.
+              </p>
+            </div>
+            <Link
+              href={`/w/${workspaceSlug}/folders`}
+              className="inline-flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3.5 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
+            >
+              <FolderIcon className="h-4 w-4" />
+              Open folders
+            </Link>
+          </div>
+
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            {enrichedFolders.length > 0 ? (
+              enrichedFolders.map((folder, index) => (
+                <Link key={folder.id} href={`/w/${workspaceSlug}/folders/${folder.id}`} className="block">
+                  <FolderCard
+                    name={folder.name}
+                    subtitle={`Structure v${folder.structureVersion}`}
+                    meta={new Date(folder.updatedAt).toLocaleDateString()}
+                    badge={index === 0 ? "Most active" : null}
+                    count={folder.artifactCount}
+                    lead={folder.lead}
+                    chips={folder.chips}
+                  />
+                </Link>
+              ))
+            ) : (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-4 py-5 text-sm text-slate-500">
+                No saved folders yet. The inferred clusters on the right can guide what should become a shared folder next.
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="rounded-[28px] border border-slate-200/80 bg-white/92 p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.3)]">
+          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+            <SparkIcon className="h-4 w-4" />
+            Suggested structures
+          </div>
+          <div className="mt-1 text-sm leading-6 text-slate-600">
+            These clusters are inferred from transcription and block structure. Turn the ones that keep recurring into permanent folders.
+          </div>
+          <div className="mt-4 grid gap-3">
+            {smartCollections.slice(0, 5).map((collection) => (
+              <div key={collection.key} className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-4">
+                <FolderCard
+                  name={collection.name}
+                  subtitle="Inferred from current artifacts"
+                  label="Smart"
+                  kind="smart"
+                  count={collection.artifactCount}
+                  lead={
+                    collection.sharedKeywords.length > 0
+                      ? `Common transcript language: ${collection.sharedKeywords.slice(0, 3).join(", ")}`
+                      : "Common structure is emerging across multiple artifacts."
+                  }
+                  chips={collection.sharedThemes}
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+
+      <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <section className="rounded-[28px] border border-slate-200/80 bg-white/92 p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.3)]">
+          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+            <CaptureIcon className="h-4 w-4" />
+            Capture from anywhere
+          </div>
+          <div className="mt-1 text-sm leading-6 text-slate-600">
+            Voice is still the lowest-friction input. Record directly into the workspace or turn a meeting into a structured artifact without leaving the flow.
+          </div>
+          <div className="mt-4">
+            <AudioRecorder workspaceSlug={workspaceSlug} />
+          </div>
+          <div className="mt-4">
+            <AnywhereMeetingCapture
+              workspaceSlug={workspaceSlug}
+              artifacts={artifacts.map((artifact) => ({ id: artifact.id, title: artifact.title }))}
+            />
+          </div>
+        </section>
+
+        <section className="grid gap-4">
+          <div className="rounded-[28px] border border-slate-200/80 bg-white/92 p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.3)]">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Slack</div>
+            <div className="mt-1 text-sm text-slate-600">
+              {slack ? `Connected to ${slack.slack_team_name ?? slack.slack_team_id}` : "Not connected yet"}
+            </div>
             <div className="mt-4">
               <SlackSettingsForm
                 workspaceSlug={workspaceSlug}
@@ -132,33 +258,11 @@ export default async function WorkspacePage(props: { params: Promise<{ workspace
             </div>
           </div>
 
-          <div className="rounded-xl border border-white/60 bg-white/50 p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-sm">
-                <div className="font-medium">Google Workspace</div>
-                <div className="text-xs text-muted">
-                  {google ? `Connected to ${google.email ?? "Google account"}` : "Not connected"}
-                </div>
-              </div>
-              {google ? (
-                <a
-                  className="rounded-md border border-white/60 bg-white/40 px-3 py-2 text-sm hover:bg-white/70"
-                  href={`/api/google/oauth/start?workspaceSlug=${encodeURIComponent(workspaceSlug)}`}
-                >
-                  Reconnect
-                </a>
-              ) : (
-                <a
-                  className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-white"
-                  href={`/api/google/oauth/start?workspaceSlug=${encodeURIComponent(workspaceSlug)}`}
-                >
-                  Connect Google
-                </a>
-              )}
+          <div className="rounded-[28px] border border-slate-200/80 bg-white/92 p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.3)]">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Google Workspace</div>
+            <div className="mt-1 text-sm text-slate-600">
+              {google ? `Connected to ${google.email ?? "Google account"}` : "Not connected yet"}
             </div>
-            <p className="mt-3 text-xs text-muted">
-              Loop can scan calendar events for attached Docs and turn them into structured updates.
-            </p>
             <div className="mt-4">
               <GoogleSettingsForm
                 workspaceSlug={workspaceSlug}
@@ -167,123 +271,44 @@ export default async function WorkspacePage(props: { params: Promise<{ workspace
               />
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
 
-      <section className="glass mt-6 rounded-xl p-6">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Announcements & logs</h2>
-        <p className="mt-1 text-sm text-muted">
-          Capture Google Classroom/Form updates, launch announcements, and async meeting summaries in one place.
-        </p>
-        <div className="mt-4">
-          <AnnouncementLog
-            workspaceSlug={workspaceSlug}
-            initialAnnouncements={announcements.map((announcement) => ({
-              id: announcement.id,
-              title: announcement.title,
-              bodyMd: announcement.body_md,
-              source: announcement.source,
-              sourceRef: announcement.source_ref,
-              createdAt: announcement.created_at,
-              createdByName: announcement.created_by_name,
-              createdByEmail: announcement.created_by_email,
-            }))}
-          />
-        </div>
-      </section>
+      <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <section className="rounded-[28px] border border-slate-200/80 bg-white/92 p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.3)]">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Announcements and logs</div>
+          <div className="mt-4">
+            <AnnouncementLog
+              workspaceSlug={workspaceSlug}
+              initialAnnouncements={announcements.map((announcement) => ({
+                id: announcement.id,
+                title: announcement.title,
+                bodyMd: announcement.body_md,
+                source: announcement.source,
+                sourceRef: announcement.source_ref,
+                createdAt: announcement.created_at,
+                createdByName: announcement.created_by_name,
+                createdByEmail: announcement.created_by_email,
+              }))}
+            />
+          </div>
+        </section>
 
-      <section className="glass mt-6 rounded-xl p-6">
         <WorkspaceMembersPanel
           workspaceSlug={workspaceSlug}
-          initialMembers={members.map((member) => ({
-            userId: member.user_id,
-            role: member.role,
-            name: member.name,
-            email: member.email,
-          }))}
+          initialMembers={memberSummaries}
           isAdmin={session.role === "admin"}
         />
-      </section>
-
-      <section className="mt-8 grid gap-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Open review requests</h2>
-        {reviewRequests.length === 0 ? (
-          <div className="glass rounded-xl p-6 text-sm text-muted">No open requests.</div>
-        ) : (
-          <div className="grid gap-2">
-            {reviewRequests.map((r) => (
-              <Link
-                key={r.id}
-                href={`/w/${workspaceSlug}/review-requests/${r.id}`}
-                className="glass rounded-xl p-4 hover:bg-white/70"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="font-medium">{r.title}</div>
-                  <div className="text-xs text-muted">{new Date(r.created_at).toLocaleString()}</div>
-                </div>
-                <div className="mt-1 text-xs text-muted">Artifact: {r.artifact_id}</div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="mt-8 grid gap-3">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Folders</h2>
-          <Link className="text-xs text-blue-500 hover:underline" href={`/w/${workspaceSlug}/folders/new`}>
-            New folder
-          </Link>
-        </div>
-        {folders.length === 0 ? (
-          <div className="glass rounded-xl p-6 text-sm text-muted">
-            No folders yet. Create one to enforce inherited structure across artifacts.
-          </div>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {folders.map((folder, idx) => (
-              <Link key={folder.id} className="block" href={`/w/${workspaceSlug}/folders/${folder.id}`}>
-                <FolderCard
-                  name={folder.name}
-                  subtitle={`Version ${folder.structure_version}`}
-                  meta={new Date(folder.updated_at).toLocaleDateString()}
-                  badge={idx === 0 ? "Most recent" : null}
-                />
-              </Link>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="mt-10 grid gap-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Artifacts</h2>
-        {artifacts.length === 0 ? (
-          <div className="glass rounded-xl p-6 text-sm text-muted">
-            No artifacts yet. Create one to start collecting async feedback.
-          </div>
-        ) : (
-          <div className="grid gap-2">
-            {artifacts.map((a) => (
-              <Link
-                key={a.id}
-                className="glass flex items-center justify-between rounded-xl p-4 hover:bg-white/70"
-                href={`/w/${workspaceSlug}/artifacts/${a.id}`}
-              >
-                <div>
-                  <div className="font-medium">{a.title}</div>
-                  <div className="text-xs text-muted">
-                    Status: {a.status}
-                    {a.folder_name ? ` · Folder: ${a.folder_name}` : ""}
-                  </div>
-                </div>
-                <div className="text-xs text-muted">{new Date(a.updated_at).toLocaleString()}</div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <WorkspaceGuide artifactsCount={artifacts.length} foldersCount={folders.length} />
+      </div>
     </main>
+  );
+}
+
+function StatPill(props: { icon: ReactNode; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700">
+      {props.icon}
+      {props.label}
+    </span>
   );
 }

@@ -241,7 +241,12 @@ export function FolderStructureForm(props: {
             type="button"
             className="folder-card text-left"
             data-selected={structureMode === "template" ? "true" : "false"}
-            style={{ "--folder-accent": "59 130 246" } as CSSProperties}
+            style={{
+              "--folder-accent": "101 149 255",
+              "--folder-surface": "232 239 255",
+              "--folder-edge": "191 219 254",
+              "--folder-ink": "30 64 175",
+            } as CSSProperties}
             onClick={() => selectStructureMode("template")}
           >
             <div className="flex items-start gap-3">
@@ -257,7 +262,12 @@ export function FolderStructureForm(props: {
             type="button"
             className="folder-card text-left"
             data-selected={structureMode === "custom" ? "true" : "false"}
-            style={{ "--folder-accent": "14 116 144" } as CSSProperties}
+            style={{
+              "--folder-accent": "141 150 255",
+              "--folder-surface": "240 236 255",
+              "--folder-edge": "221 214 254",
+              "--folder-ink": "91 33 182",
+            } as CSSProperties}
             onClick={() => selectStructureMode("custom")}
           >
             <div className="flex items-start gap-3">

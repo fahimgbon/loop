@@ -1,23 +1,30 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/src/components/Button";
 import { Input } from "@/src/components/Input";
+import {
+  ReviewRequestShareCard,
+  type ReviewRequestShareState,
+  type ReviewRequestSlackStatus,
+} from "@/src/components/reviews/ReviewRequestShareCard";
 
 export function ReviewRequestForm(props: { workspaceSlug: string; artifactId: string }) {
+  const router = useRouter();
   const [title, setTitle] = useState("Async review");
   const [q1, setQ1] = useState("What’s the biggest flaw or risk?");
   const [q2, setQ2] = useState("What would you change or clarify?");
   const [q3, setQ3] = useState("Any dependencies or unknowns?");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [createdId, setCreatedId] = useState<string | null>(null);
+  const [created, setCreated] = useState<ReviewRequestShareState | null>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setCreatedId(null);
+    setCreated(null);
     setLoading(true);
     try {
       const questions = [q1, q2, q3].map((q) => q.trim()).filter(Boolean);
@@ -27,13 +34,29 @@ export function ReviewRequestForm(props: { workspaceSlug: string; artifactId: st
         body: JSON.stringify({ artifactId: props.artifactId, title, questions }),
       });
       const data = (await res.json().catch(() => null)) as
-        | { ok?: boolean; reviewRequestId?: string; error?: string }
+        | {
+            ok?: boolean;
+            reviewRequestId?: string;
+            shareUrl?: string;
+            slackStatus?: ReviewRequestSlackStatus;
+            slackChannelId?: string | null;
+            slackTeamName?: string | null;
+            error?: string;
+          }
         | null;
       if (!res.ok || !data?.ok || !data.reviewRequestId) {
         setError(data?.error ?? "Create failed");
         return;
       }
-      setCreatedId(data.reviewRequestId);
+      setCreated({
+        reviewRequestId: data.reviewRequestId,
+        shareUrl:
+          data.shareUrl ?? `${window.location.origin}/w/${props.workspaceSlug}/review-requests/${data.reviewRequestId}`,
+        slackStatus: data.slackStatus ?? "slack_not_connected",
+        slackChannelId: data.slackChannelId ?? null,
+        slackTeamName: data.slackTeamName ?? null,
+      });
+      router.refresh();
     } finally {
       setLoading(false);
     }
@@ -58,7 +81,7 @@ export function ReviewRequestForm(props: { workspaceSlug: string; artifactId: st
         <Input value={q3} onChange={(e) => setQ3(e.target.value)} />
       </label>
       {error ? <p className="text-sm text-red-400">{error}</p> : null}
-      {createdId ? <p className="text-sm text-green-400">Created: {createdId}</p> : null}
+      {created ? <ReviewRequestShareCard share={created} /> : null}
       <div className="flex items-center justify-end">
         <Button type="submit" disabled={loading}>
           {loading ? "Creating…" : "Create request"}
@@ -67,4 +90,3 @@ export function ReviewRequestForm(props: { workspaceSlug: string; artifactId: st
     </form>
   );
 }
-

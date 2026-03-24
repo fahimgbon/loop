@@ -1,4 +1,5 @@
 import { withClient } from "@/src/server/db";
+import { getDemoPrdDraftFromExtraction, type DemoPrdSections } from "@/src/server/demo/immersiveDemo";
 import { createArtifactFromTemplate } from "@/src/server/services/artifactService";
 import { getContributionForWorkspace, linkContributionToArtifact } from "@/src/server/repo/contributions";
 import { listBlocks, updateBlockContent } from "@/src/server/repo/artifacts";
@@ -27,7 +28,20 @@ export async function renderContributionToArtifact(input: {
 
       const blocks = await listBlocks(client, created.artifactId);
       const body = (contribution.transcript ?? contribution.text_content ?? "").trim();
-      if (body) {
+      const demoDraft = getDemoPrdDraftFromExtraction(contribution.extracted_json);
+
+      if (demoDraft) {
+        for (const block of blocks) {
+          const content = contentForStructuredBlock(block.title, demoDraft.sections);
+          if (!content) continue;
+          await updateBlockContent(client, {
+            workspaceId: input.workspaceId,
+            blockId: block.id,
+            contentMd: content,
+            userId: input.createdBy,
+          });
+        }
+      } else if (body) {
         const target = pickTargetBlock(blocks, contribution.intent);
         const content = `### Captured input\n\n${body}\n`;
         if (target) {
@@ -68,4 +82,23 @@ function pickTargetBlock(
   if (intent === "idea") return byTitle(/proposed solution/) ?? byTitle(/solution/) ?? blocks[0];
   if (intent === "feedback") return byTitle(/context/) ?? blocks[0];
   return blocks[0];
+}
+
+function contentForStructuredBlock(
+  title: string | null,
+  sections: DemoPrdSections,
+) {
+  const normalized = (title ?? "").trim().toLowerCase();
+  if (normalized === "context") return sections.context;
+  if (normalized === "problem") return sections.problem;
+  if (normalized === "target users") return sections.targetUsers;
+  if (normalized === "proposed solution") return sections.proposedSolution;
+  if (normalized === "non-goals") return sections.nonGoals;
+  if (normalized === "success metrics") return sections.successMetrics;
+  if (normalized === "risks") return sections.risks;
+  if (normalized === "assumptions") return sections.assumptions;
+  if (normalized === "open questions") return sections.openQuestions;
+  if (normalized === "dependencies") return sections.dependencies;
+  if (normalized === "rollout notes") return sections.rolloutNotes;
+  return null;
 }

@@ -21,6 +21,7 @@ export function InlineReviewPanel(props: {
   requests: InlineReviewRequest[];
   blockTitles: Array<{ id: string; title: string | null; type: string }>;
   onResponseCreated?: () => void;
+  compact?: boolean;
 }) {
   const [activeId, setActiveId] = useState(props.requests[0]?.id ?? "");
   const [text, setText] = useState("");
@@ -50,6 +51,15 @@ export function InlineReviewPanel(props: {
     };
   }, [active?.blockIds]);
 
+  function announceResponseCreated(reviewRequestId: string) {
+    window.dispatchEvent(
+      new CustomEvent("loop:review-response-created", {
+        detail: { artifactId: props.artifactId, reviewRequestId },
+      }),
+    );
+    props.onResponseCreated?.();
+  }
+
   async function sendText() {
     if (!active || !text.trim()) return;
     setBusy(true);
@@ -71,7 +81,7 @@ export function InlineReviewPanel(props: {
       }
       setText("");
       setNotice("Response captured. Suggestions/comments are being generated.");
-      props.onResponseCreated?.();
+      announceResponseCreated(active.id);
     } finally {
       setBusy(false);
     }
@@ -125,18 +135,31 @@ export function InlineReviewPanel(props: {
 
   if (props.requests.length === 0) {
     return (
-      <div className="rounded-xl border border-white/60 bg-white/50 p-4 text-sm text-muted">
+      <div
+        className={[
+          "text-sm text-muted",
+          props.compact
+            ? "rounded-xl border border-dashed border-slate-200 bg-white/60 p-3"
+            : "rounded-xl border border-white/60 bg-white/50 p-4",
+        ].join(" ")}
+      >
         No open review requests on this artifact.
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl border border-white/60 bg-white/50 p-4">
+    <div
+      className={[
+        props.compact ? "grid gap-3" : "rounded-xl border border-white/60 bg-white/50 p-4",
+      ].join(" ")}
+    >
+      <div className={props.compact ? "grid gap-1" : undefined}>
       <div className="text-sm font-semibold uppercase tracking-wide text-muted">Inline async review</div>
       <p className="mt-1 text-sm text-muted">
         Stay in this artifact, answer questions inline, and record while reading.
       </p>
+      </div>
 
       <div className="mt-3 flex flex-wrap gap-2">
         {props.requests.map((request) => (
@@ -161,7 +184,12 @@ export function InlineReviewPanel(props: {
       </div>
 
       {active ? (
-        <div className="mt-4 grid gap-3 rounded-lg border border-white/60 bg-white/70 p-3">
+        <div
+          className={[
+            "mt-4 grid gap-3 rounded-lg p-3",
+            props.compact ? "border border-slate-200 bg-white/80" : "border border-white/60 bg-white/70",
+          ].join(" ")}
+        >
           <div className="text-xs text-muted">
             Created {new Date(active.createdAt).toLocaleString()}
             {active.dueAt ? ` · Due ${new Date(active.dueAt).toLocaleString()}` : ""}
@@ -214,7 +242,7 @@ export function InlineReviewPanel(props: {
               autoReload={false}
               onUploaded={() => {
                 setNotice("Voice response uploaded. Suggestions/comments are being generated.");
-                props.onResponseCreated?.();
+                announceResponseCreated(active.id);
               }}
             />
             <div className="ml-auto">

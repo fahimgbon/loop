@@ -71,7 +71,9 @@ export async function getBlockWithContent(
 export async function listArtifacts(
   client: pg.PoolClient,
   workspaceId: string,
+  options?: { limit?: number },
 ): Promise<Array<Pick<DbArtifact, "id" | "title" | "status" | "updated_at" | "folder_id"> & { folder_name: string | null }>> {
+  const limit = Math.max(1, Math.min(options?.limit ?? 100, 200));
   const res = await client.query<
     Pick<DbArtifact, "id" | "title" | "status" | "updated_at" | "folder_id"> & { folder_name: string | null }
   >(
@@ -80,8 +82,8 @@ export async function listArtifacts(
      left join artifact_folders f on f.id = a.folder_id
      where a.workspace_id = $1
      order by a.updated_at desc
-     limit 100`,
-    [workspaceId],
+     limit $2`,
+    [workspaceId, limit],
   );
   return res.rows;
 }

@@ -28,7 +28,7 @@ export async function GET(
       intent: contribution.intent,
       intent_confidence: contribution.intent_confidence,
       artifact_id: contribution.artifact_id,
+      extracted_json: contribution.extracted_json,
     },
   });
 }
-

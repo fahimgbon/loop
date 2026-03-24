@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { Button } from "@/src/components/Button";
 
-export function LogoutButton() {
+export function LogoutButton(props: { compact?: boolean } = {}) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -22,8 +22,7 @@ export function LogoutButton() {
 
   return (
     <Button variant="secondary" onClick={logout} disabled={loading} aria-label="Log out">
-      {loading ? "…" : "Log out"}
+      {loading ? "..." : props.compact ? "Out" : "Log out"}
     </Button>
   );
 }
-

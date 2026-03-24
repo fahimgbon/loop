@@ -2,11 +2,20 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, DragEvent, RefObject } from "react";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/src/components/Button";
-import { BlockEditor, type BlockDto } from "@/src/components/blocks/BlockEditor";
+import {
+  BlockEditor,
+  type BlockDto,
+  type BlockSuggestionPreview,
+} from "@/src/components/blocks/BlockEditor";
 import { Input } from "@/src/components/Input";
-import { AgentDock } from "@/src/components/guide/AgentDock";
+import {
+  ReviewRequestShareCard,
+  type ReviewRequestShareState,
+  type ReviewRequestSlackStatus,
+} from "@/src/components/reviews/ReviewRequestShareCard";
 
 type BlockTypeOption = {
   type: string;
@@ -53,6 +62,7 @@ export function ArtifactDoc(props: {
   artifactTitle: string;
   initialBlocks: BlockDto[];
 }) {
+  const router = useRouter();
   const [blocks, setBlocks] = useState<BlockDto[]>(props.initialBlocks);
   const [autoEditBlockId, setAutoEditBlockId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -65,7 +75,7 @@ export function ArtifactDoc(props: {
   const [askTitle, setAskTitle] = useState("");
   const [askQuestion, setAskQuestion] = useState("");
   const [askBusy, setAskBusy] = useState(false);
-  const [askCreatedId, setAskCreatedId] = useState<string | null>(null);
+  const [askCreated, setAskCreated] = useState<ReviewRequestShareState | null>(null);
   const [lastAddedId, setLastAddedId] = useState<string | null>(null);
   const [reordering, setReordering] = useState(false);
   const [draggingBlockId, setDraggingBlockId] = useState<string | null>(null);
@@ -99,7 +109,7 @@ export function ArtifactDoc(props: {
       if (evt.key !== "Escape") return;
       evt.preventDefault();
       setAskFor(null);
-      setAskCreatedId(null);
+      setAskCreated(null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -143,6 +153,29 @@ export function ArtifactDoc(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.artifactId]);
 
+  useEffect(() => {
+    let timers: number[] = [];
+    const onReviewResponse = () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+      timers = [];
+      void refreshSuggestions().catch(() => null);
+      for (const delay of [1200, 3200, 6500]) {
+        timers.push(
+          window.setTimeout(() => {
+            void refreshSuggestions().catch(() => null);
+          }, delay),
+        );
+      }
+    };
+
+    window.addEventListener("loop:review-response-created", onReviewResponse);
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+      window.removeEventListener("loop:review-response-created", onReviewResponse);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.artifactId]);
+
   async function decideSuggestion(suggestionId: string, action: "accept" | "decline") {
     setError(null);
     const endpoint =
@@ -168,7 +201,7 @@ export function ArtifactDoc(props: {
   }): Promise<string | null> {
     setBusy(true);
     setError(null);
-    setAskCreatedId(null);
+    setAskCreated(null);
     try {
       const contentMd = input.contentMd ?? defaultContentForType(input.type);
       const res = await fetch(`/api/artifacts/${props.artifactId}/blocks`, {
@@ -290,7 +323,7 @@ export function ArtifactDoc(props: {
     setAskFor(blockId);
     setAskTitle(title);
     setAskQuestion(defaultAskQuestion(hint?.type ?? block?.type ?? "text", (hint?.title ?? block?.title) ?? undefined));
-    setAskCreatedId(null);
+    setAskCreated(null);
     setAddMenuFor(null);
   }
 
@@ -312,12 +345,28 @@ export function ArtifactDoc(props: {
         }),
       });
       const data = (await res.json().catch(() => null)) as
-        | { ok?: boolean; reviewRequestId?: string; error?: string }
+        | {
+            ok?: boolean;
+            reviewRequestId?: string;
+            shareUrl?: string;
+            slackStatus?: ReviewRequestSlackStatus;
+            slackChannelId?: string | null;
+            slackTeamName?: string | null;
+            error?: string;
+          }
         | null;
       if (!res.ok || !data?.ok || !data.reviewRequestId) {
         throw new Error(data?.error ?? "Request failed");
       }
-      setAskCreatedId(data.reviewRequestId);
+      setAskCreated({
+        reviewRequestId: data.reviewRequestId,
+        shareUrl:
+          data.shareUrl ?? `${window.location.origin}/w/${props.workspaceSlug}/review-requests/${data.reviewRequestId}`,
+        slackStatus: data.slackStatus ?? "slack_not_connected",
+        slackChannelId: data.slackChannelId ?? null,
+        slackTeamName: data.slackTeamName ?? null,
+      });
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Request failed");
     } finally {
@@ -326,17 +375,24 @@ export function ArtifactDoc(props: {
   }
 
   return (
-    <div className="mt-6">
+    <div className="mt-4">
       {error ? (
         <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           {error}
         </div>
       ) : null}
 
-      <div className="rounded-[28px] border border-white/60 bg-white/55 p-4 backdrop-blur-2xl">
-        <div className="rounded-2xl border border-white/70 bg-white/60 p-3">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted">Where to go next</div>
-          <div className="mt-2 flex flex-wrap gap-2 text-xs">
+      <div className="rounded-[28px] border border-white/70 bg-white/70 px-4 py-3 backdrop-blur-2xl">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/70 px-2 pb-3">
+          <div className="min-w-0">
+            <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-slate-400">
+              Document
+            </div>
+            <div className="mt-1 text-sm text-slate-500">
+              Insert blocks from the gutter or keep moving with quick actions.
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs">
             <div className="relative">
               <button
                 type="button"
@@ -344,21 +400,21 @@ export function ArtifactDoc(props: {
                 disabled={interactionBusy}
                 onClick={() => setAddMenuFor("__quick__")}
               >
-                1. Insert block
+                Insert block
               </button>
               {addMenuFor === "__quick__" ? (
-                <div ref={addMenuRef} className="absolute left-0 top-10 z-[130] w-[320px]">
+                <div ref={addMenuRef} className="absolute right-0 top-10 z-[130] w-[320px]">
                   <BlockTypeMenu onSelect={(type) => addBlock({ insertPosition: endInsertPosition, type })} />
                 </div>
               ) : null}
             </div>
-              <button
-                type="button"
-                className={["flow-step-mini", blocks.length > 0 && !askFor ? "guide-ring" : ""].join(" ")}
-                disabled={interactionBusy}
-                onClick={() => {
-                  void (async () => {
-                    const blockId = await addBlock({
+            <button
+              type="button"
+              className={["flow-step-mini", blocks.length > 0 && !askFor ? "guide-ring" : ""].join(" ")}
+              disabled={interactionBusy}
+              onClick={() => {
+                void (async () => {
+                  const blockId = await addBlock({
                     insertPosition: endInsertPosition,
                     type: "question",
                     title: "Pointed question",
@@ -369,7 +425,7 @@ export function ArtifactDoc(props: {
                 })();
               }}
             >
-              2. Ask pointed question
+              Ask question
             </button>
             <button
               type="button"
@@ -383,20 +439,12 @@ export function ArtifactDoc(props: {
                 })
               }
             >
-              3. Add clarification
+              Add note
             </button>
           </div>
         </div>
 
-        <div className="px-2 pb-2 pt-4">
-          <div className="text-sm font-semibold text-slate-800">Document canvas</div>
-          <div className="text-xs text-muted">
-            Use hidden <span className="font-medium text-slate-700">+</span> gutters to insert blocks.
-            Use <span className="font-medium text-slate-700">?</span> beside a block for pointed async input.
-          </div>
-        </div>
-
-        <div className="grid gap-2">
+        <div className="grid gap-2 pt-3">
           <InsertRail
             busy={interactionBusy}
             open={addMenuFor === "__start__"}
@@ -489,10 +537,10 @@ export function ArtifactDoc(props: {
             title={askTitle}
             question={askQuestion}
             busy={askBusy}
-            createdId={askCreatedId}
+            created={askCreated}
             onClose={() => {
               setAskFor(null);
-              setAskCreatedId(null);
+              setAskCreated(null);
             }}
             onTitleChange={setAskTitle}
             onQuestionChange={setAskQuestion}
@@ -501,18 +549,6 @@ export function ArtifactDoc(props: {
           />
         ) : null}
       </div>
-
-      {!askFor ? (
-        <AgentDock
-          title={blocks.length === 0 ? "Start with a block" : "Ask a pointed question"}
-          body={
-            blocks.length === 0
-              ? "Use the + gutter to add Context or Questions. Loop will guide the structure."
-              : "Use the ? button beside a block to request async input from collaborators."
-          }
-          action={blocks.length === 0 ? "Insert block" : "Request input"}
-        />
-      ) : null}
     </div>
   );
 }
@@ -547,6 +583,7 @@ function BlockRow(props: {
 }) {
   const rowRef = useRef<HTMLDivElement | null>(null);
   const { autoEdit, onAutoEditConsumed } = props;
+  const suggestionPreview = useMemo(() => selectSuggestionPreview(props.suggestions), [props.suggestions]);
 
   useEffect(() => {
     if (!autoEdit) return;
@@ -559,7 +596,7 @@ function BlockRow(props: {
       ref={rowRef}
       className={[
         "doc-block-shell doc-block-reveal group relative flex gap-3 rounded-2xl border border-white/70 bg-white/50 p-4 backdrop-blur-xl overflow-visible",
-        props.addMenuOpen ? "z-[120] pb-24" : "z-0",
+        props.addMenuOpen ? "z-[120]" : "z-0",
         props.dropActive ? "ring-2 ring-sky-200" : "",
         props.highlighted ? "ring-2 ring-fuchsia-200 bg-fuchsia-50/50" : "",
         props.dragging ? "opacity-60" : "",
@@ -573,7 +610,15 @@ function BlockRow(props: {
       onDrop={(event) => props.onDrop(event, props.block.id)}
     >
       {props.justAdded ? (
-        <span className="guide-badge" style={{ "--folder-accent": "59 130 246" } as CSSProperties}>
+        <span
+          className="guide-badge"
+          style={{
+            "--folder-accent": "101 149 255",
+            "--folder-surface": "232 239 255",
+            "--folder-edge": "191 219 254",
+            "--folder-ink": "30 64 175",
+          } as CSSProperties}
+        >
           Just added
         </span>
       ) : null}
@@ -640,69 +685,105 @@ function BlockRow(props: {
             ↓
           </button>
         </div>
-        <BlockEditor artifactId={props.artifactId} block={props.block} autoEdit={props.autoEdit} />
-        {props.suggestions.length > 0 ? (
-          <div className="mt-3 grid gap-2">
-            {props.suggestions.map((suggestion) => (
-              <div
-                key={suggestion.id}
-                className="rounded-xl border border-indigo-100 bg-indigo-50/80 p-3 text-sm text-slate-800"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-indigo-700">
-                    {suggestion.type === "question" ? "Inline comment" : "Suggested edit"}
-                  </div>
-                  <div className="text-[11px] text-indigo-600">
-                    {suggestion.createdByName ? `${suggestion.createdByName} · ` : ""}
-                    {new Date(suggestion.createdAt).toLocaleString()}
-                  </div>
-                </div>
-
-                {suggestion.payload?.kind === "suggestion" ? (
-                  <div className="mt-2 grid gap-2">
-                    {suggestion.payload.originalText.trim() ? (
-                      <div className="rounded-md border border-indigo-100 bg-white/80 p-2">
-                        <div className="text-[11px] uppercase tracking-[0.12em] text-muted">Original</div>
-                        <div className="mt-1 whitespace-pre-wrap text-sm text-slate-700 line-through decoration-red-400/70">
-                          {suggestion.payload.originalText}
-                        </div>
-                      </div>
-                    ) : null}
-                    <div className="rounded-md border border-indigo-100 bg-white/90 p-2">
-                      <div className="text-[11px] uppercase tracking-[0.12em] text-muted">Suggested</div>
-                      <div className="mt-1 whitespace-pre-wrap text-sm text-slate-900">
-                        {suggestion.payload.suggestedText || suggestion.summary}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mt-2 rounded-md border border-indigo-100 bg-white/90 p-2">
-                    <div className="text-[11px] uppercase tracking-[0.12em] text-muted">Comment</div>
-                    <div className="mt-1 whitespace-pre-wrap text-sm text-slate-900">
-                      {suggestion.payload?.suggestedText || suggestion.summary}
-                    </div>
-                  </div>
-                )}
-
-                <div className="mt-3 flex items-center justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => props.onDeclineSuggestion(suggestion.id)}
-                  >
-                    Decline
-                  </Button>
-                  <Button type="button" onClick={() => props.onAcceptSuggestion(suggestion.id)}>
-                    Accept
-                  </Button>
-                </div>
-              </div>
-            ))}
+        <div className={props.suggestions.length > 0 ? "grid gap-5 xl:grid-cols-[minmax(0,1fr)_17rem]" : undefined}>
+          <div className="min-w-0">
+            <BlockEditor
+              artifactId={props.artifactId}
+              block={props.block}
+              autoEdit={props.autoEdit}
+              suggestionPreview={suggestionPreview}
+            />
           </div>
-        ) : null}
+
+          {props.suggestions.length > 0 ? (
+            <aside className="min-w-0 border-t border-slate-200/80 pt-4 xl:border-l xl:border-t-0 xl:pl-4 xl:pt-0">
+              <div className="mb-3 text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">
+                {props.suggestions.length} open comment{props.suggestions.length === 1 ? "" : "s"}
+              </div>
+              <div className="grid gap-3">
+                {props.suggestions.map((suggestion) => (
+                  <SuggestionCommentCard
+                    key={suggestion.id}
+                    suggestion={suggestion}
+                    onAccept={() => props.onAcceptSuggestion(suggestion.id)}
+                    onDecline={() => props.onDeclineSuggestion(suggestion.id)}
+                  />
+                ))}
+              </div>
+            </aside>
+          ) : null}
+        </div>
       </div>
     </div>
   );
+}
+
+function SuggestionCommentCard(props: {
+  suggestion: SuggestionDto;
+  onAccept: () => void;
+  onDecline: () => void;
+}) {
+  const { suggestion } = props;
+  const isEdit = suggestion.payload?.kind === "suggestion";
+  const replacementCopy = suggestion.payload?.suggestedText?.trim() || suggestion.summary;
+  const originalCopy = suggestion.payload?.originalText?.trim() ?? "";
+
+  return (
+    <div className="rounded-2xl border border-slate-200/80 bg-white/90 p-3 text-sm text-slate-800">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-sm font-medium text-slate-800">
+            {isEdit ? "Suggested edit" : "Inline comment"}
+          </div>
+          <div className="mt-1 text-[11px] text-slate-400">
+            {suggestion.createdByName ? `${suggestion.createdByName} · ` : ""}
+            {new Date(suggestion.createdAt).toLocaleString()}
+          </div>
+        </div>
+        <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">
+          {suggestion.severity}
+        </div>
+      </div>
+
+      {isEdit ? (
+        <div className="mt-3 grid gap-3">
+          {originalCopy ? (
+            <div className="whitespace-pre-wrap text-sm leading-6 text-slate-400 line-through decoration-rose-300 decoration-2">
+              {originalCopy}
+            </div>
+          ) : null}
+
+          <div className="whitespace-pre-wrap text-sm leading-6 text-slate-900">
+            {replacementCopy}
+          </div>
+        </div>
+      ) : (
+        <div className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-700">{replacementCopy}</div>
+      )}
+
+      <div className="mt-3 flex items-center justify-end gap-2">
+        <Button type="button" variant="secondary" onClick={props.onDecline}>
+          Decline
+        </Button>
+        <Button type="button" onClick={props.onAccept}>
+          Accept
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function selectSuggestionPreview(suggestions: SuggestionDto[]): BlockSuggestionPreview | null {
+  const editSuggestion = suggestions.find(
+    (suggestion) =>
+      suggestion.payload?.kind === "suggestion" && Boolean(suggestion.payload.suggestedText.trim()),
+  );
+  if (!editSuggestion?.payload) return null;
+  return {
+    originalText: editSuggestion.payload.originalText,
+    suggestedText: editSuggestion.payload.suggestedText,
+    applyMode: editSuggestion.payload.applyMode,
+  };
 }
 
 function InsertRail(props: {
@@ -717,7 +798,7 @@ function InsertRail(props: {
     <div
       className={[
         "group relative z-[20] flex gap-3 rounded-2xl px-4 py-2",
-        props.open ? "z-[120] min-h-[180px] pb-28" : "",
+        props.open ? "z-[120]" : "",
       ].join(" ")}
     >
       <div className="relative w-12 shrink-0">
@@ -752,7 +833,7 @@ function AskSheet(props: {
   title: string;
   question: string;
   busy: boolean;
-  createdId: string | null;
+  created: ReviewRequestShareState | null;
   onClose: () => void;
   onTitleChange: (v: string) => void;
   onQuestionChange: (v: string) => void;
@@ -824,17 +905,7 @@ function AskSheet(props: {
               </div>
             </div>
 
-            {props.createdId ? (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-                Created.{" "}
-                <a
-                  className="font-medium underline decoration-emerald-300 underline-offset-4 hover:decoration-emerald-500"
-                  href={`/w/${props.workspaceSlug}/review-requests/${props.createdId}`}
-                >
-                  Open request
-                </a>
-              </div>
-            ) : null}
+            {props.created ? <ReviewRequestShareCard share={props.created} /> : null}
 
             <div className="mt-auto flex items-center justify-end gap-2 pt-2">
               <Button type="button" variant="secondary" onClick={props.onClose} disabled={props.busy}>
@@ -894,7 +965,11 @@ function defaultContentForType(type: string) {
     case "option":
       return `**Option:** \n\n**Pros:** \n\n**Cons:** \n`;
     case "table":
-      return `| Column | Value |\n|---|---|\n|  |  |\n`;
+      return JSON.stringify({
+        version: 1,
+        columns: ["Column 1", "Column 2"],
+        rows: [["", ""]],
+      });
     default:
       return "";
   }

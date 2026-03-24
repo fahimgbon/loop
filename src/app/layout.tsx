@@ -13,12 +13,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="grain min-h-screen">
-        <div className="fixed inset-0 -z-20 overflow-hidden">
-          <div className="blob blob-1" />
-          <div className="blob blob-2" />
-          <div className="blob blob-3" />
-        </div>
+      <body className="min-h-screen">
         <TopNav />
         <Suspense>{children}</Suspense>
       </body>

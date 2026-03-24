@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/src/components/Button";
+import { AvatarStack } from "@/src/components/collaboration/AvatarStack";
 
 type Member = {
   userId: string;
@@ -20,11 +21,12 @@ type Permission = {
   updatedAt: string;
 };
 
-export function ArtifactPermissionsPanel(props: { artifactId: string }) {
+export function ArtifactPermissionsPanel(props: { artifactId: string; compact?: boolean }) {
   const [members, setMembers] = useState<Member[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [selectedUserId, setSelectedUserId] = useState("");
   const [selectedRole, setSelectedRole] = useState<"viewer" | "editor">("viewer");
+  const [activePersonId, setActivePersonId] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,11 +36,29 @@ export function ArtifactPermissionsPanel(props: { artifactId: string }) {
     () => members.filter((member) => !existingSet.has(member.userId)),
     [members, existingSet],
   );
+  const editors = useMemo(() => permissions.filter((permission) => permission.role === "editor"), [permissions]);
+  const viewers = useMemo(() => permissions.filter((permission) => permission.role === "viewer"), [permissions]);
+  const activePermission = permissions.find((permission) => permission.userId === activePersonId) ?? null;
+  const activeMember =
+    members.find((member) => member.userId === activePersonId) ??
+    members.find((member) => member.userId === permissions[0]?.userId) ??
+    members[0] ??
+    null;
 
   useEffect(() => {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.artifactId]);
+
+  useEffect(() => {
+    const available = new Set([
+      ...permissions.map((permission) => permission.userId),
+      ...members.map((member) => member.userId),
+    ]);
+    if (!activePersonId || !available.has(activePersonId)) {
+      setActivePersonId(permissions[0]?.userId ?? members[0]?.userId ?? "");
+    }
+  }, [activePersonId, members, permissions]);
 
   async function load() {
     setLoading(true);
@@ -57,6 +77,10 @@ export function ArtifactPermissionsPanel(props: { artifactId: string }) {
       if (!selectedUserId && data.members.length > 0) {
         const first = data.members.find((member) => !data.permissions?.some((p) => p.userId === member.userId));
         if (first) setSelectedUserId(first.userId);
+      }
+      if (!activePersonId) {
+        const firstActive = data.permissions[0]?.userId ?? data.members[0]?.userId ?? "";
+        setActivePersonId(firstActive);
       }
     } finally {
       setLoading(false);
@@ -106,34 +130,82 @@ export function ArtifactPermissionsPanel(props: { artifactId: string }) {
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-white/70 bg-white/60 p-4 text-sm text-muted">
+      <div
+        className={[
+          "text-sm text-muted",
+          props.compact
+            ? "rounded-xl border border-dashed border-slate-200 bg-white/60 p-3"
+            : "rounded-2xl border border-white/70 bg-white/60 p-4",
+        ].join(" ")}
+      >
         Loading permissions…
       </div>
     );
   }
 
   return (
-    <div className="rounded-2xl border border-white/70 bg-white/65 p-4 backdrop-blur-xl">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted">Permissions</div>
-      <div className="mt-2 text-xs text-muted">
-        Assign viewer/editor access so collaborators can review or co-edit imported decisions.
+    <div
+      className={[
+        props.compact
+          ? "grid gap-3"
+          : "rounded-2xl border border-white/70 bg-white/65 p-4 backdrop-blur-xl",
+      ].join(" ")}
+    >
+      <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted">Collaborators</div>
+      <div className="mt-2 text-xs leading-5 text-muted">
+        Shared editing keeps this artifact moving without a single owner bottleneck. Loop in teammates for live edits or async review.
+      </div>
+
+      <div className="grid gap-2 rounded-xl border border-slate-200 bg-white/80 p-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-xs font-medium text-slate-900">Shared editing</div>
+            <div className="mt-1 text-[11px] text-slate-500">
+              {permissions.length > 0
+                ? `${editors.length} editor${editors.length === 1 ? "" : "s"} · ${viewers.length} viewer${viewers.length === 1 ? "" : "s"}`
+                : `No explicit collaborators yet · ${members.length} teammate${members.length === 1 ? "" : "s"} in workspace`}
+            </div>
+          </div>
+          <AvatarStack
+            size="sm"
+            people={(permissions.length > 0 ? permissions : members).map((person) => ({
+              id: person.userId,
+              name: person.name,
+              email: person.email,
+            }))}
+          />
+        </div>
       </div>
 
       <div className="mt-3 grid gap-2">
         {permissions.length === 0 ? (
           <div className="rounded-xl border border-dashed border-white/70 bg-white/45 p-3 text-xs text-muted">
-            No explicit artifact permissions yet.
+            No explicit collaborators yet. Add teammates below so suggestions and edits feel shared from the start.
           </div>
         ) : (
           permissions.map((permission) => (
             <div
               key={permission.userId}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/70 bg-white/75 px-3 py-2"
+              className={[
+                "flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2 transition",
+                activePersonId === permission.userId
+                  ? "border-slate-300 bg-slate-50"
+                  : "border-white/70 bg-white/75 hover:border-slate-200 hover:bg-white",
+              ].join(" ")}
             >
-              <div className="min-w-0">
-                <div className="truncate text-sm font-medium text-slate-900">{permission.name}</div>
-                <div className="truncate text-xs text-muted">{permission.email}</div>
-              </div>
+              <button
+                type="button"
+                className="min-w-0 flex-1 text-left"
+                onClick={() => setActivePersonId(permission.userId)}
+              >
+                <div className="flex items-center gap-3">
+                  <AvatarStack people={[{ id: permission.userId, name: permission.name, email: permission.email }]} max={1} size="sm" />
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium text-slate-900">{permission.name}</div>
+                    <div className="truncate text-xs text-muted">{permission.email}</div>
+                  </div>
+                </div>
+              </button>
               <div className="flex items-center gap-2">
                 <select
                   className="rounded-md border border-white/70 bg-white/80 px-2 py-1 text-xs outline-none focus:border-accent"
@@ -163,8 +235,67 @@ export function ArtifactPermissionsPanel(props: { artifactId: string }) {
         )}
       </div>
 
-      <div className="mt-4 rounded-xl border border-white/70 bg-white/70 p-3">
-        <div className="text-xs font-medium text-slate-900">Add collaborator</div>
+      {activeMember ? (
+        <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <AvatarStack
+                people={[{ id: activeMember.userId, name: activeMember.name, email: activeMember.email }]}
+                max={1}
+                size="sm"
+              />
+              <div className="min-w-0">
+                <div className="truncate text-sm font-medium text-slate-900">{activeMember.name}</div>
+                <div className="truncate text-xs text-slate-500">{activeMember.email}</div>
+              </div>
+            </div>
+            <span className="rounded-full border border-slate-200 bg-white px-2 py-1 text-[11px] uppercase tracking-[0.16em] text-slate-600">
+              {activePermission?.role ?? activeMember.role}
+            </span>
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            <a
+              className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              href={`mailto:${activeMember.email}`}
+            >
+              Email
+            </a>
+            <button
+              type="button"
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              onClick={() => {
+                if (!activePermission || activePermission.role === "editor") return;
+                void savePermission({ userId: activeMember.userId, role: "editor" });
+              }}
+              disabled={busy || !activePermission || activePermission.role === "editor"}
+            >
+              Make editor
+            </button>
+            <button
+              type="button"
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              onClick={() => {
+                if (activePermission) {
+                  void removePermission(activeMember.userId);
+                  return;
+                }
+                setSelectedUserId(activeMember.userId);
+              }}
+              disabled={busy}
+            >
+              {activePermission ? "Remove" : "Queue add"}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <div
+        className={[
+          "mt-4 rounded-xl p-3",
+          props.compact ? "border border-slate-200 bg-white/80" : "border border-white/70 bg-white/70",
+        ].join(" ")}
+      >
+        <div className="text-xs font-medium text-slate-900">Add teammate to this doc</div>
         <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_120px_auto]">
           <select
             className="rounded-md border border-white/70 bg-white/90 px-2 py-2 text-xs outline-none focus:border-accent"
@@ -172,7 +303,7 @@ export function ArtifactPermissionsPanel(props: { artifactId: string }) {
             onChange={(event) => setSelectedUserId(event.target.value)}
             disabled={busy || addableMembers.length === 0}
           >
-            <option value="">{addableMembers.length > 0 ? "Select workspace member" : "No members left"}</option>
+            <option value="">{addableMembers.length > 0 ? "Select teammate" : "Everyone is already added"}</option>
             {addableMembers.map((member) => (
               <option key={member.userId} value={member.userId}>
                 {member.name} · {member.email}
@@ -196,7 +327,7 @@ export function ArtifactPermissionsPanel(props: { artifactId: string }) {
             }}
             disabled={busy || !selectedUserId}
           >
-            {busy ? "Saving…" : "Add"}
+            {busy ? "Saving…" : "Add to doc"}
           </Button>
         </div>
       </div>

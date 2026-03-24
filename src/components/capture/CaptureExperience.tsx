@@ -7,8 +7,8 @@ import { Button } from "@/src/components/Button";
 import { CaptureRecorder } from "@/src/components/capture/CaptureRecorder";
 import { Input } from "@/src/components/Input";
 import { Markdown } from "@/src/components/Markdown";
-import { WebGLLiquidBackdrop } from "@/src/components/visual/WebGLLiquidBackdrop";
 import { AgentDock } from "@/src/components/guide/AgentDock";
+import { getDemoPrdDraftFromExtraction } from "@/src/server/demo/immersiveDemo";
 
 type ContributionSummary = {
   id: string;
@@ -17,6 +17,7 @@ type ContributionSummary = {
   intent: string;
   intent_confidence: number | null;
   artifact_id: string | null;
+  extracted_json: unknown | null;
 };
 
 export function CaptureExperience(props: { workspaceSlug: string }) {
@@ -29,7 +30,6 @@ export function CaptureExperience(props: { workspaceSlug: string }) {
   const [handsfree, setHandsfree] = useState(true);
   const [autoRenderStarted, setAutoRenderStarted] = useState(false);
   const [recording, setRecording] = useState(false);
-  const [audioLevel, setAudioLevel] = useState(0);
   const [portal, setPortal] = useState<null | { artifactId: string }>(null);
   const [error, setError] = useState<string | null>(null);
   const [importBusy, setImportBusy] = useState(false);
@@ -41,12 +41,18 @@ export function CaptureExperience(props: { workspaceSlug: string }) {
     return body;
   }, [contribution]);
 
+  const structuredDraft = useMemo(
+    () => getDemoPrdDraftFromExtraction(contribution?.extracted_json ?? null),
+    [contribution?.extracted_json],
+  );
+
   const autoTitle = useMemo(() => {
+    if (structuredDraft?.title) return structuredDraft.title;
     const base = transcript.replace(/\s+/g, " ").trim();
     if (!base) return "New idea";
     const words = base.split(" ").slice(0, 6).join(" ");
     return words.length < base.length ? `${words}…` : words;
-  }, [transcript]);
+  }, [structuredDraft?.title, transcript]);
 
   const intentLabel = useMemo(() => {
     if (!contribution?.intent) return "listening";
@@ -215,8 +221,7 @@ export function CaptureExperience(props: { workspaceSlug: string }) {
   }, [handsfree, contributionId, transcript, autoRenderStarted, creating, autoTitle, renderToDoc]);
 
   return (
-    <main className="app-backdrop relative min-h-[calc(100vh-72px)] overflow-hidden px-6 py-10">
-      <WebGLLiquidBackdrop audioLevel={audioLevel} active />
+    <main className="mx-auto max-w-6xl px-6 py-8">
       {portal ? (
         <div className="pointer-events-none fixed inset-0 z-50 grid place-items-center">
           <div className="absolute inset-0 bg-white/30 backdrop-blur-2xl" />
@@ -266,7 +271,6 @@ export function CaptureExperience(props: { workspaceSlug: string }) {
               <CaptureRecorder
                 workspaceSlug={props.workspaceSlug}
                 onRecordingChange={setRecording}
-                onAudioLevel={(lvl) => setAudioLevel(lvl)}
                 onUploaded={(id) => {
                   setContributionId(id);
                   setContribution(null);
@@ -341,21 +345,46 @@ export function CaptureExperience(props: { workspaceSlug: string }) {
             </div>
 
             <div className="mt-5 grid gap-3">
-              <DocBlock title="Context" ready={!!transcript} delayMs={0}>
-                {transcript ? (
-                  <Markdown markdown={transcript} />
-                ) : (
-                  <SkeletonLines lines={5} />
-                )}
-              </DocBlock>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <DocBlock title="Risks / unknowns" ready={!!transcript} delayMs={140}>
-                  {transcript ? <AutoBullets text={transcript} kind="risk" /> : <SkeletonLines lines={3} />}
-                </DocBlock>
-                <DocBlock title="Next steps" ready={!!transcript} delayMs={220}>
-                  {transcript ? <AutoBullets text={transcript} kind="next" /> : <SkeletonLines lines={3} />}
-                </DocBlock>
-              </div>
+              {structuredDraft ? (
+                <>
+                  <DocBlock title="Context" ready delayMs={0}>
+                    <Markdown markdown={structuredDraft.sections.context} />
+                  </DocBlock>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <DocBlock title="Problem" ready delayMs={120}>
+                      <Markdown markdown={structuredDraft.sections.problem} />
+                    </DocBlock>
+                    <DocBlock title="Target users" ready delayMs={180}>
+                      <Markdown markdown={structuredDraft.sections.targetUsers} />
+                    </DocBlock>
+                  </div>
+                  <DocBlock title="Proposed solution" ready delayMs={240}>
+                    <Markdown markdown={structuredDraft.sections.proposedSolution} />
+                  </DocBlock>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <DocBlock title="Success metrics" ready delayMs={320}>
+                      <Markdown markdown={structuredDraft.sections.successMetrics} />
+                    </DocBlock>
+                    <DocBlock title="Risks" ready delayMs={380}>
+                      <Markdown markdown={structuredDraft.sections.risks} />
+                    </DocBlock>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <DocBlock title="Transcript" ready={!!transcript} delayMs={0}>
+                    {transcript ? <Markdown markdown={transcript} /> : <SkeletonLines lines={5} />}
+                  </DocBlock>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <DocBlock title="Risks / unknowns" ready={!!transcript} delayMs={140}>
+                      {transcript ? <AutoBullets text={transcript} kind="risk" /> : <SkeletonLines lines={3} />}
+                    </DocBlock>
+                    <DocBlock title="Next steps" ready={!!transcript} delayMs={220}>
+                      {transcript ? <AutoBullets text={transcript} kind="next" /> : <SkeletonLines lines={3} />}
+                    </DocBlock>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
