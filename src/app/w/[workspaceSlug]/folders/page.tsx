@@ -49,26 +49,22 @@ export default async function FolderListPage(props: { params: Promise<{ workspac
 
   return (
     <main className="px-3 py-3 lg:px-5 lg:py-4">
-      <section className="rounded-[30px] border border-slate-200/80 bg-white/92 p-6 shadow-[0_24px_80px_-56px_rgba(15,23,42,0.28)]">
+      <section className="rounded-[30px] border border-slate-200/90 bg-white/96 p-6 shadow-[0_24px_80px_-56px_rgba(15,23,42,0.22)]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
               <FolderIcon className="h-4 w-4" />
-              Collections
+              Folders
             </div>
             <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-slate-950">
-              Organize artifacts into intuitive shared spaces
+              Folders
             </h1>
-            <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-600">
-              Saved folders hold the structures your team wants to keep. Suggested clusters are inferred from the blocks
-              and transcript content already emerging across the workspace.
-            </p>
           </div>
 
           <div className="flex flex-wrap gap-2">
             <Link
               href={`/w/${workspaceSlug}/search`}
-              className="inline-flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-medium text-slate-800 hover:bg-slate-50"
+              className="inline-flex items-center gap-2 rounded-2xl border border-slate-300/90 bg-white/98 px-3.5 py-2.5 text-sm font-medium text-slate-900 hover:bg-slate-50"
             >
               <SearchIcon className="h-4 w-4" />
               Browse workspace
@@ -85,13 +81,13 @@ export default async function FolderListPage(props: { params: Promise<{ workspac
       </section>
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <section className="rounded-[28px] border border-slate-200/80 bg-white/92 p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.3)]">
+        <section className="rounded-[28px] border border-slate-200/90 bg-white/96 p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Saved folders</div>
-              <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-slate-950">Stable structures your team already uses</h2>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">Saved folders</div>
+              <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-slate-950">Saved</h2>
             </div>
-            <div className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-600">
+            <div className="rounded-full border border-slate-300/80 bg-slate-50 px-3 py-1.5 text-xs text-slate-700">
               {enrichedFolders.length} total
             </div>
           </div>
@@ -116,20 +112,17 @@ export default async function FolderListPage(props: { params: Promise<{ workspac
                 </Link>
               ))
             ) : (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-4 py-6 text-sm text-slate-500">
+              <div className="rounded-2xl border border-dashed border-slate-300/90 bg-slate-50/92 px-4 py-6 text-sm text-slate-700">
                 No folders yet. Start with an inferred cluster on the right or create one from scratch.
               </div>
             )}
           </div>
         </section>
 
-        <section className="rounded-[28px] border border-slate-200/80 bg-white/92 p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.3)]">
-          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+        <section className="rounded-[28px] border border-slate-200/90 bg-white/96 p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
+          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
             <SparkIcon className="h-4 w-4" />
-            Inferred next
-          </div>
-          <div className="mt-1 text-sm leading-6 text-slate-600">
-            These patterns are strong enough that they may deserve a dedicated folder and reusable structure.
+            Suggested
           </div>
           <div className="mt-4 grid gap-3">
             {smartCollections.length > 0 ? (
@@ -151,7 +144,7 @@ export default async function FolderListPage(props: { params: Promise<{ workspac
                 </div>
               ))
             ) : (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-4 py-6 text-sm text-slate-500">
+              <div className="rounded-2xl border border-dashed border-slate-300/90 bg-slate-50/92 px-4 py-6 text-sm text-slate-700">
                 Smart folder suggestions will appear as more artifacts accumulate.
               </div>
             )}

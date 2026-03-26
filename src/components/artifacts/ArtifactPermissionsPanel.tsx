@@ -152,9 +152,6 @@ export function ArtifactPermissionsPanel(props: { artifactId: string; compact?: 
       ].join(" ")}
     >
       <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted">Collaborators</div>
-      <div className="mt-2 text-xs leading-5 text-muted">
-        Shared editing keeps this artifact moving without a single owner bottleneck. Loop in teammates for live edits or async review.
-      </div>
 
       <div className="grid gap-2 rounded-xl border border-slate-200 bg-white/80 p-3">
         <div className="flex items-center justify-between gap-3">

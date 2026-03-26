@@ -11,7 +11,7 @@ export default function SetupPage() {
   const [workspaceName, setWorkspaceName] = useState("Demo Workspace");
   const [workspaceSlug, setWorkspaceSlug] = useState("demo");
   const [name, setName] = useState("Admin");
-  const [email, setEmail] = useState("admin@loop.local");
+  const [email, setEmail] = useState("admin@aceync.local");
   const [password, setPassword] = useState("admin");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -39,7 +39,7 @@ export default function SetupPage() {
 
   return (
     <main className="mx-auto max-w-lg px-6 py-10">
-      <h1 className="text-2xl font-semibold tracking-tight">Set up Loop</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">Set up Aceync</h1>
       <p className="mt-1 text-sm text-muted">Create your first workspace and admin user.</p>
 
       <form className="glass mt-6 grid gap-4 rounded-xl p-6" onSubmit={onSubmit}>

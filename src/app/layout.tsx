@@ -6,8 +6,8 @@ import { Suspense } from "react";
 import { TopNav } from "@/src/components/TopNav";
 
 export const metadata: Metadata = {
-  title: "Loop",
-  description: "Audio-first decision and backlog orchestration",
+  title: "Aceync",
+  description: "Audio-first decision artifacts, research memory, and collaboration orchestration",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

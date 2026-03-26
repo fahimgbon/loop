@@ -24,6 +24,7 @@ type ExplorerArtifact = BrowseArtifact & {
   browse_group_name: string;
   browse_group_kind: "folder" | "smart";
   inferred_template_slug: string;
+  summary_excerpt: string | null;
   summary_blocks: Array<{ title: string | null; type: string }>;
 };
 
@@ -33,6 +34,7 @@ export type SearchExplorerResult = {
     block_id: string;
     block_title: string | null;
     block_type: string;
+    content_excerpt: string;
     artifact_id: string;
     artifact_title: string;
     browse_group_key: string;
@@ -115,6 +117,7 @@ export async function getWorkspaceSearchExplorer(input: {
       block_id: string;
       block_title: string | null;
       block_type: string;
+      content_excerpt: string;
       artifact_id: string;
       artifact_title: string;
     }>(
@@ -122,6 +125,7 @@ export async function getWorkspaceSearchExplorer(input: {
          b.id as block_id,
          b.title as block_title,
          b.type as block_type,
+         left(regexp_replace(coalesce(b.content_md, ''), E'[\\n\\r\\t]+', ' ', 'g'), 220) as content_excerpt,
          a.id as artifact_id,
          a.title as artifact_title
        from artifact_blocks b
@@ -150,6 +154,7 @@ export async function getWorkspaceSearchExplorer(input: {
         browse_group_name: enriched.browse_group_name,
         browse_group_kind: enriched.browse_group_kind,
         inferred_template_slug: enriched.inferred_template_slug,
+        summary_excerpt: enriched.summary_excerpt,
         summary_blocks: enriched.summary_blocks,
       };
     }),
@@ -182,6 +187,8 @@ function buildExplorerArtifact(artifact: BrowseArtifact, blocks: BlockSummary[])
   const template = defaultTemplates.find((item) => item.slug === inferredTemplateSlug) ?? defaultTemplates[3];
 
   const summaryBlocks = summarizeBlocks(blocks);
+  const summaryExcerpt =
+    blocks.find((block) => block.content_excerpt.trim().length > 0)?.content_excerpt.trim() ?? null;
   if (artifact.folder_id) {
     return {
       ...artifact,
@@ -189,6 +196,7 @@ function buildExplorerArtifact(artifact: BrowseArtifact, blocks: BlockSummary[])
       browse_group_name: artifact.folder_name ?? "Folder",
       browse_group_kind: "folder",
       inferred_template_slug: inferredTemplateSlug,
+      summary_excerpt: summaryExcerpt,
       summary_blocks: summaryBlocks,
     };
   }
@@ -199,6 +207,7 @@ function buildExplorerArtifact(artifact: BrowseArtifact, blocks: BlockSummary[])
     browse_group_name: template.group,
     browse_group_kind: "smart",
     inferred_template_slug: template.slug,
+    summary_excerpt: summaryExcerpt,
     summary_blocks: summaryBlocks,
   };
 }

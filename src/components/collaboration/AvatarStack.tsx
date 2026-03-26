@@ -29,7 +29,7 @@ export function AvatarStack(props: {
           overlapClass={index === 0 ? "" : "-ml-2.5"}
           onClick={props.onPersonClick}
         >
-          {getInitials(person.name || person.email || "Loop")}
+          {getInitials(person.name || person.email || "Aceync")}
         </AvatarBubble>
       ))}
       {overflow > 0 ? (

@@ -57,7 +57,7 @@ export function InboxItem(props: {
   }
 
   return (
-    <div className="glass rounded-xl p-5">
+    <div id={`inbox-${props.item.id}`} className="glass rounded-xl p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="text-xs text-muted">

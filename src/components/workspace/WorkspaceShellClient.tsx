@@ -16,6 +16,7 @@ import {
   LoopMark,
   NewDocIcon,
   SearchIcon,
+  SparkIcon,
 } from "@/src/components/icons/LoopIcons";
 import { LogoutButton } from "@/src/components/logout/LogoutButton";
 
@@ -55,6 +56,7 @@ export function WorkspaceShellClient(props: {
 
   const navItems: Array<{ href: string; label: string; icon: IconComponent }> = [
     { href: `/w/${props.workspaceSlug}`, label: "Home", icon: HomeIcon },
+    { href: `/w/${props.workspaceSlug}/unified`, label: "Unified", icon: SparkIcon },
     { href: `/w/${props.workspaceSlug}/capture`, label: "Capture", icon: CaptureIcon },
     { href: `/w/${props.workspaceSlug}/inbox`, label: "Inbox", icon: InboxIcon },
     { href: `/w/${props.workspaceSlug}/search`, label: "Search", icon: SearchIcon },
@@ -72,10 +74,18 @@ export function WorkspaceShellClient(props: {
             className="flex items-center gap-3 font-semibold tracking-tight text-slate-950"
           >
             <LoopMark className="h-8 w-8 text-slate-950" />
-            <span>Loop</span>
+            <span>Aceync</span>
           </Link>
           <div className="flex items-center gap-2">
-            <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">{props.workspaceSlug}</div>
+            <button
+              type="button"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-900"
+              onClick={() => window.dispatchEvent(new CustomEvent("aceync:ask-open"))}
+              aria-label="Ask Ace"
+            >
+              <SearchIcon className="h-4 w-4 text-slate-950" />
+            </button>
+            <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-600">{props.workspaceSlug}</div>
             <LogoutButton compact />
           </div>
         </div>
@@ -87,8 +97,8 @@ export function WorkspaceShellClient(props: {
               className={[
                 "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium whitespace-nowrap shadow-sm",
                 pathname === item.href
-                  ? "border-slate-300 bg-white text-slate-900"
-                  : "border-slate-200 bg-white/90 text-slate-700",
+                  ? "border-slate-300 bg-white text-slate-950"
+                  : "border-slate-300 bg-white/96 text-slate-900",
               ].join(" ")}
               aria-current={pathname === item.href ? "page" : undefined}
             >
@@ -115,14 +125,14 @@ export function WorkspaceShellClient(props: {
             <Link
               href={`/w/${props.workspaceSlug}`}
               className="flex min-w-0 items-center gap-3 font-semibold tracking-tight text-slate-950"
-              title="Loop workspace home"
+              title="Aceync workspace home"
             >
               <LoopMark className="h-9 w-9 shrink-0 text-slate-950" />
-              {expanded ? <span className="truncate">Loop</span> : null}
+              {expanded ? <span className="truncate">Aceync</span> : null}
             </Link>
             <button
               type="button"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-800 shadow-[0_10px_28px_-22px_rgba(4,12,27,0.24)] hover:border-slate-400 hover:bg-slate-50"
               onClick={() => {
                 setCollapsed((value) => !value);
               }}
@@ -133,6 +143,27 @@ export function WorkspaceShellClient(props: {
           </div>
 
           <div className="workspace-sidebar-section">
+            <button
+              type="button"
+              className={[
+                "mb-3 flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left text-sm font-medium transition",
+                expanded
+                  ? "border-slate-300 bg-white text-slate-950 hover:border-slate-400 hover:bg-slate-50"
+                  : "justify-center border-slate-300 bg-white text-slate-950 hover:border-slate-400 hover:bg-slate-50",
+              ].join(" ")}
+              onClick={() => window.dispatchEvent(new CustomEvent("aceync:ask-open"))}
+              title="Ask Ace"
+            >
+              <span className="workspace-nav-icon">
+                <SearchIcon className="h-[17px] w-[17px]" />
+              </span>
+              {expanded ? (
+                <>
+                  <span className="truncate">Ask Ace</span>
+                  <span className="ml-auto text-[11px] uppercase tracking-[0.16em] text-slate-500">⌘K</span>
+                </>
+              ) : null}
+            </button>
             <div className="workspace-sidebar-label">{expanded ? "Workspace" : "Go"}</div>
             <nav className="grid gap-1.5">
               {navItems.map((item) => {
@@ -168,17 +199,26 @@ export function WorkspaceShellClient(props: {
                       href={href}
                       title={artifact.title}
                       className={[
-                        "min-w-0 overflow-hidden rounded-2xl px-3 py-2.5 text-sm transition",
-                        active ? "bg-white text-slate-950 shadow-sm" : "text-slate-700 hover:bg-white",
+                        "min-w-0 overflow-hidden rounded-2xl border px-3 py-2.5 text-sm transition",
+                        active
+                          ? "border-slate-900 bg-slate-950 text-white"
+                          : "border-slate-300 bg-white text-slate-900 hover:border-slate-400 hover:bg-slate-50",
                       ].join(" ")}
                     >
                       <div className="flex min-w-0 items-start gap-2">
-                        <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+                        <span
+                          className={[
+                            "mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border",
+                            active
+                              ? "border-white/15 bg-white/10 text-white"
+                              : "border-slate-300 bg-white text-slate-600",
+                          ].join(" ")}
+                        >
                           <NewDocIcon className="h-4 w-4" />
                         </span>
                         <div className="min-w-0">
                           <div className="truncate font-medium leading-5">{artifact.title}</div>
-                          <div className="mt-0.5 text-[11px] text-slate-500">
+                          <div className="mt-0.5 text-[11px] text-slate-600">
                             {new Date(artifact.updatedAt).toLocaleDateString()}
                           </div>
                         </div>
@@ -190,9 +230,9 @@ export function WorkspaceShellClient(props: {
             </div>
           ) : null}
 
-          <div className="mt-auto border-t border-slate-200/70 px-3 py-4">
+          <div className="mt-auto border-t border-slate-300 px-3 py-4">
             {expanded ? (
-              <div className="mb-3 text-xs text-slate-400">
+              <div className="mb-3 text-xs text-slate-600">
                 {props.workspaceSlug} · {props.role}
               </div>
             ) : null}

@@ -46,7 +46,7 @@ export function WorkspaceMemberProfileSheet(props: {
     <>
       <button
         type="button"
-        className="fixed inset-0 z-[70] bg-slate-950/22"
+        className="fixed inset-0 z-[70] bg-slate-950/28"
         onClick={props.onClose}
         aria-label="Close member profile"
       />
@@ -68,7 +68,7 @@ export function WorkspaceMemberProfileSheet(props: {
           <div className="flex items-start justify-between gap-4">
             <div className="flex min-w-0 items-center gap-4">
               <div
-                className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] border border-white/85 text-xl font-semibold shadow-[0_20px_40px_-30px_rgba(15,23,42,0.18)]"
+                className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] border border-slate-200/90 text-xl font-semibold shadow-[0_20px_40px_-30px_rgba(15,23,42,0.18)]"
                 style={{
                   background: `linear-gradient(145deg, rgb(${profile.tone.glow}), rgb(${profile.tone.surface}))`,
                   color: `rgb(${profile.tone.ink})`,
@@ -78,7 +78,7 @@ export function WorkspaceMemberProfileSheet(props: {
               </div>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full border border-slate-200 bg-white/90 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+                  <span className="rounded-full border border-slate-200/90 bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">
                     {profile.role}
                   </span>
                   <span
@@ -95,13 +95,13 @@ export function WorkspaceMemberProfileSheet(props: {
                 <h2 id="workspace-member-profile-title" className="mt-3 truncate text-2xl font-semibold tracking-[-0.04em] text-slate-950">
                   {profile.name}
                 </h2>
-                <div className="mt-1 truncate text-sm text-slate-600">{profile.email}</div>
+                <div className="mt-1 truncate text-sm text-slate-700">{profile.email}</div>
               </div>
             </div>
 
             <button
               type="button"
-              className="inline-flex h-10 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent)_/_0.18)] focus-visible:ring-offset-2"
+              className="inline-flex h-10 shrink-0 items-center justify-center rounded-full border border-slate-300/90 bg-white px-4 text-sm font-medium text-slate-800 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent)_/_0.22)] focus-visible:ring-offset-2"
               onClick={props.onClose}
               aria-label="Close profile"
             >
@@ -142,7 +142,7 @@ export function WorkspaceMemberProfileSheet(props: {
           </div>
 
           <section className="mt-6 rounded-[24px] border border-slate-200/90 bg-white p-4 shadow-[0_18px_36px_-30px_rgba(15,23,42,0.12)]">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Best for</div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">Best for</div>
             <div className="mt-3 flex flex-wrap gap-2">
               {profile.strengths.map((strength) => (
                 <span
@@ -153,7 +153,7 @@ export function WorkspaceMemberProfileSheet(props: {
                 </span>
               ))}
             </div>
-            <div className="mt-4 text-sm leading-6 text-slate-600">{profile.availability}</div>
+            <div className="mt-4 text-sm leading-6 text-slate-700">{profile.availability}</div>
           </section>
 
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -177,7 +177,7 @@ export function WorkspaceMemberProfileSheet(props: {
 function StatTile(props: { label: string; value: string; icon: ReactNode }) {
   return (
     <div className="rounded-[22px] border border-slate-200/90 bg-white p-4 shadow-[0_18px_36px_-30px_rgba(15,23,42,0.12)]">
-      <div className="flex items-center justify-between gap-3 text-slate-500">
+      <div className="flex items-center justify-between gap-3 text-slate-600">
         <span className="text-[11px] font-semibold uppercase tracking-[0.18em]">{props.label}</span>
         {props.icon}
       </div>
@@ -193,7 +193,7 @@ function ProfileSection(props: {
 }) {
   return (
     <section className="rounded-[22px] border border-slate-200/90 bg-white p-4 shadow-[0_18px_36px_-30px_rgba(15,23,42,0.12)]">
-      <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+      <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
         {props.icon}
         {props.label}
       </div>

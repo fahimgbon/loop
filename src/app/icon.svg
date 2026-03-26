@@ -1,4 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none">
   <rect width="96" height="96" rx="24" fill="#0F172A" />
-  <path d="M48 21 69.5 58H26.5L48 21Z" fill="#fff" />
+  <text
+    x="48"
+    y="48"
+    fill="#fff"
+    dominant-baseline="central"
+    font-family="'Segoe UI Symbol','Apple Symbols','Noto Sans Symbols 2','Arial Unicode MS',sans-serif"
+    font-size="54"
+    font-weight="700"
+    text-anchor="middle"
+  >
+    ♠
+  </text>
 </svg>

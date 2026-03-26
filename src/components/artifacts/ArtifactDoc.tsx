@@ -116,6 +116,15 @@ export function ArtifactDoc(props: {
   }, [askFor]);
 
   useEffect(() => {
+    if (!askFor) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [askFor]);
+
+  useEffect(() => {
     const onHighlight = (event: Event) => {
       const detail = (event as CustomEvent<{ blockIds?: string[] }>).detail;
       const ids = Array.isArray(detail?.blockIds) ? detail.blockIds : [];

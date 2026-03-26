@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/src/components/Button";
 import {
+  ArrowUpRightIcon,
   FolderIcon,
   NewDocIcon,
   SearchIcon,
@@ -29,6 +30,7 @@ type ExplorerArtifact = {
   browse_group_name: string;
   browse_group_kind: "folder" | "smart";
   inferred_template_slug: string;
+  summary_excerpt: string | null;
   summary_blocks: BlockSummary[];
 };
 
@@ -45,18 +47,21 @@ type ExplorerFolder = {
   suggestedBlocks: Array<{ key: string; type: string; title: string | null; contentMd: string }>;
 };
 
+type SearchBlockMatch = {
+  block_id: string;
+  block_title: string | null;
+  block_type: string;
+  content_excerpt: string;
+  artifact_id: string;
+  artifact_title: string;
+  browse_group_key: string;
+  browse_group_name: string;
+  browse_group_kind: "folder" | "smart";
+};
+
 type SearchResult = {
   artifacts: ExplorerArtifact[];
-  blocks: Array<{
-    block_id: string;
-    block_title: string | null;
-    block_type: string;
-    artifact_id: string;
-    artifact_title: string;
-    browse_group_key: string;
-    browse_group_name: string;
-    browse_group_kind: "folder" | "smart";
-  }>;
+  blocks: SearchBlockMatch[];
   folders: ExplorerFolder[];
   templates: Array<{ slug: string; name: string; group: string }>;
 };
@@ -67,8 +72,26 @@ type FacetOption = {
   count: number;
 };
 
+type SearchView = "answer" | "artifacts" | "blocks";
+
+type SearchBrief = {
+  status: "high" | "partial" | "low";
+  headline: string;
+  summary: string;
+  bullets: string[];
+  sources: ExplorerArtifact[];
+  supportingBlocks: SearchBlockMatch[];
+  followUps: string[];
+  topFolderKey: string | null;
+  topFolderName: string | null;
+  topThemes: string[];
+};
+
 const selectClassName =
-  "rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm outline-none focus:border-slate-900 focus:ring-4 focus:ring-slate-900/5";
+  "rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-950 shadow-[0_8px_20px_-18px_rgba(4,12,27,0.16)] outline-none focus:border-[rgb(var(--accent))] focus:ring-4 focus:ring-[rgb(var(--accent)_/_0.14)]";
+
+const crispCardClass =
+  "rounded-[22px] border border-slate-300 bg-white shadow-[0_14px_32px_-24px_rgba(4,12,27,0.12)]";
 
 function getApiError(payload: unknown): string | null {
   if (!payload || typeof payload !== "object") return null;
@@ -79,15 +102,16 @@ function getApiError(payload: unknown): string | null {
 export function SearchWorkspaceClient(props: {
   workspaceSlug: string;
   initialResult: SearchResult;
+  initialQuery: string;
 }) {
   const router = useRouter();
   const workspaceSlug = props.workspaceSlug;
-  const [q, setQ] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [q, setQ] = useState(props.initialQuery);
   const [result, setResult] = useState<SearchResult>(props.initialResult);
   const [error, setError] = useState<string | null>(null);
   const [selectedFolderKey, setSelectedFolderKey] = useState("all");
   const [selectedFacetKey, setSelectedFacetKey] = useState<string | null>(null);
+  const [queryView, setQueryView] = useState<SearchView>("answer");
   const [composer, setComposer] = useState<"folder" | "artifact" | null>(null);
   const [folderName, setFolderName] = useState("");
   const [folderTemplateSlug, setFolderTemplateSlug] = useState("prd");
@@ -101,13 +125,12 @@ export function SearchWorkspaceClient(props: {
   useEffect(() => {
     let cancelled = false;
     const controller = new AbortController();
-    if (!skippedInitialFetch.current && q.trim().length === 0 && refreshTick === 0) {
+    if (!skippedInitialFetch.current) {
       skippedInitialFetch.current = true;
       return () => controller.abort();
     }
 
     const timeout = window.setTimeout(async () => {
-      setLoading(true);
       setError(null);
       try {
         const res = await fetch(`/api/workspaces/${workspaceSlug}/search?q=${encodeURIComponent(q)}`, {
@@ -119,8 +142,6 @@ export function SearchWorkspaceClient(props: {
       } catch (err) {
         if (controller.signal.aborted) return;
         if (!cancelled) setError(err instanceof Error ? err.message : "Search failed");
-      } finally {
-        if (!cancelled) setLoading(false);
       }
     }, q.trim().length === 0 ? 0 : 180);
 
@@ -139,6 +160,10 @@ export function SearchWorkspaceClient(props: {
   useEffect(() => {
     setSelectedFacetKey(null);
   }, [selectedFolderKey, q]);
+
+  useEffect(() => {
+    if (q.trim()) setQueryView("answer");
+  }, [q]);
 
   const actualFolders = useMemo(
     () => result.folders.filter((folder) => folder.kind === "folder"),
@@ -212,6 +237,36 @@ export function SearchWorkspaceClient(props: {
     smartFolders.find((folder) => folder.key === artifactTargetKey) ??
     null;
 
+  const starterPrompts = useMemo(
+    () =>
+      buildStarterPrompts({
+        selectedFolder,
+        actualFolders,
+        smartFolders,
+        facets: facetOptions,
+      }),
+    [actualFolders, facetOptions, selectedFolder, smartFolders],
+  );
+
+  const aiBrief = useMemo(
+    () =>
+      buildSearchBrief({
+        query: q,
+        artifacts: searchArtifacts,
+        blocks: searchBlocks,
+        allArtifacts,
+        selectedFolder,
+      }),
+    [allArtifacts, q, searchArtifacts, searchBlocks, selectedFolder],
+  );
+
+  const aiPrompts = q.trim() ? aiBrief?.followUps ?? [] : starterPrompts;
+
+  function applyPrompt(prompt: string) {
+    setQ(prompt);
+    setQueryView("answer");
+  }
+
   function openFolderComposer() {
     setComposer("folder");
     setCreateError(null);
@@ -223,9 +278,7 @@ export function SearchWorkspaceClient(props: {
     setComposer("artifact");
     setCreateError(null);
     setArtifactTitle("");
-    setArtifactTargetKey(
-      selectedFolder?.key ?? artifactTargetOptions[0]?.key ?? "smart:prd",
-    );
+    setArtifactTargetKey(selectedFolder?.key ?? artifactTargetOptions[0]?.key ?? "smart:prd");
   }
 
   async function createFolder(event: React.FormEvent) {
@@ -294,28 +347,25 @@ export function SearchWorkspaceClient(props: {
 
   return (
     <main className="px-3 py-3 lg:px-5 lg:py-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-slate-300 bg-white text-slate-900 shadow-[0_10px_28px_-20px_rgba(4,12,27,0.14)]">
             <SearchIcon className="h-5 w-5" />
           </span>
-          <div>
+          <div className="min-w-0">
             <h1 className="text-2xl font-semibold tracking-[-0.03em] text-slate-950">Search</h1>
-            <p className="mt-1 text-sm leading-6 text-slate-600">
-              Browse artifacts like a quiet file browser, with smart buckets inferred from the blocks inside each doc.
-            </p>
           </div>
         </div>
       </div>
 
-      <section className="mt-5 overflow-hidden rounded-[30px] border border-slate-200/80 bg-white/84 shadow-[0_24px_80px_-56px_rgba(15,23,42,0.28)] backdrop-blur-2xl">
-        <div className="border-b border-slate-200/80 px-5 py-5">
+      <section className="mt-5 overflow-hidden rounded-[28px] border border-slate-300 bg-white shadow-[0_22px_60px_-42px_rgba(4,12,27,0.12)]">
+        <div className="border-b border-slate-300 px-5 py-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <div className="flex-1">
               <Input
                 value={q}
                 onChange={(event) => setQ(event.target.value)}
-                placeholder="Search artifacts, block titles, or phrases…"
+                placeholder="Ask Ace"
               />
             </div>
             <div className="flex items-center gap-2">
@@ -334,23 +384,24 @@ export function SearchWorkspaceClient(props: {
               ) : null}
             </div>
           </div>
-          <div className="mt-3 text-xs font-medium text-slate-500">
-            {loading
-              ? "Refreshing search and folder view…"
-              : q.trim()
-                ? "Search stays scoped to the folder you have selected."
-                : "Use the left rail to move between real folders and inferred buckets."}
-          </div>
+
+          {aiPrompts.length > 0 ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {aiPrompts.map((prompt) => (
+                <PromptChip key={prompt} label={prompt} onClick={() => applyPrompt(prompt)} />
+              ))}
+            </div>
+          ) : null}
         </div>
 
         {composer ? (
-          <div className="border-b border-slate-200/80 bg-slate-50/80 px-5 py-5">
+          <div className="border-b border-slate-300 bg-white px-5 py-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-700">
                   {composer === "folder" ? "Create folder" : "Create artifact"}
                 </div>
-                <div className="mt-1 text-sm leading-6 text-slate-600">
+                <div className="mt-1 text-sm leading-6 text-slate-700">
                   {composer === "folder"
                     ? selectedFolder?.kind === "smart"
                       ? `This will use the inferred block structure from ${selectedFolder.name}.`
@@ -362,7 +413,7 @@ export function SearchWorkspaceClient(props: {
               </div>
               <button
                 type="button"
-                className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 shadow-[0_8px_20px_-18px_rgba(4,12,27,0.12)] hover:border-slate-400 hover:bg-slate-50"
                 onClick={() => {
                   setComposer(null);
                   setCreateError(null);
@@ -375,7 +426,7 @@ export function SearchWorkspaceClient(props: {
             {composer === "folder" ? (
               <form className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto]" onSubmit={createFolder}>
                 <label className="grid gap-1 text-sm">
-                  <span className="text-muted">Folder name</span>
+                  <span className="text-slate-700">Folder name</span>
                   <Input
                     value={folderName}
                     onChange={(event) => setFolderName(event.target.value)}
@@ -386,14 +437,14 @@ export function SearchWorkspaceClient(props: {
 
                 {selectedFolder?.kind === "smart" ? (
                   <div className="grid gap-1 text-sm">
-                    <span className="text-muted">Source</span>
-                    <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                    <span className="text-slate-700">Source</span>
+                    <div className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 shadow-[0_8px_20px_-18px_rgba(4,12,27,0.12)]">
                       {selectedFolder.name} block pattern
                     </div>
                   </div>
                 ) : (
                   <label className="grid gap-1 text-sm">
-                    <span className="text-muted">Starter structure</span>
+                    <span className="text-slate-700">Starter structure</span>
                     <select
                       className={selectClassName}
                       value={folderTemplateSlug}
@@ -417,7 +468,7 @@ export function SearchWorkspaceClient(props: {
             ) : (
               <form className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_240px_auto]" onSubmit={createArtifact}>
                 <label className="grid gap-1 text-sm">
-                  <span className="text-muted">Artifact title</span>
+                  <span className="text-slate-700">Artifact title</span>
                   <Input
                     value={artifactTitle}
                     onChange={(event) => setArtifactTitle(event.target.value)}
@@ -426,7 +477,7 @@ export function SearchWorkspaceClient(props: {
                   />
                 </label>
                 <label className="grid gap-1 text-sm">
-                  <span className="text-muted">Location</span>
+                  <span className="text-slate-700">Location</span>
                   <select
                     className={selectClassName}
                     value={artifactTargetKey}
@@ -447,12 +498,12 @@ export function SearchWorkspaceClient(props: {
               </form>
             )}
 
-            {createError ? <div className="mt-3 text-sm text-red-500">{createError}</div> : null}
+            {createError ? <div className="mt-3 text-sm text-red-600">{createError}</div> : null}
           </div>
         ) : null}
 
-        <div className="grid lg:grid-cols-[280px_minmax(0,1fr)]">
-          <aside className="overflow-x-hidden border-b border-slate-200/80 bg-slate-50/70 p-4 lg:border-b-0 lg:border-r">
+        <div className="grid lg:grid-cols-[292px_minmax(0,1fr)]">
+          <aside className="overflow-x-hidden border-b border-slate-300 bg-white p-4 lg:border-b-0 lg:border-r">
             <div className="grid gap-5">
               <nav className="grid gap-1.5">
                 <FolderNavButton
@@ -465,7 +516,9 @@ export function SearchWorkspaceClient(props: {
               </nav>
 
               <div className="grid gap-2">
-                <div className="px-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Folders</div>
+                <div className="px-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-700">
+                  Folders
+                </div>
                 {actualFolders.length > 0 ? (
                   <div className="grid gap-1.5">
                     {actualFolders.map((folder) => (
@@ -485,8 +538,8 @@ export function SearchWorkspaceClient(props: {
               </div>
 
               <div className="grid gap-2">
-                <div className="px-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Inferred from blocks
+                <div className="px-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-700">
+                  Suggested
                 </div>
                 {smartFolders.length > 0 ? (
                   <div className="grid gap-1.5">
@@ -508,143 +561,262 @@ export function SearchWorkspaceClient(props: {
             </div>
           </aside>
 
-          <section className="min-w-0 p-6">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  {selectedFolder?.kind === "smart"
-                    ? "Smart bucket"
-                    : selectedFolder?.kind === "folder"
-                      ? "Folder"
-                      : "Workspace browser"}
+          <section className="min-w-0 bg-white p-6">
+            {!q.trim() ? (
+              <div className="grid gap-5">
+                <div className={`${crispCardClass} overflow-hidden`}>
+                  <div className="border-b border-slate-300 px-5 py-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-700">
+                          Ask Ace
+                        </div>
+                        <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-slate-950">
+                          Start with a question
+                        </h2>
+                      </div>
+                      <div className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 shadow-[0_8px_20px_-18px_rgba(4,12,27,0.12)]">
+                        {allArtifacts.length} files indexed
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid gap-3 px-5 py-5">
+                    {starterPrompts.map((prompt) => (
+                      <button
+                        key={prompt}
+                        type="button"
+                        className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-left text-sm font-medium text-slate-900 shadow-[0_10px_28px_-20px_rgba(4,12,27,0.1)] transition hover:border-slate-400 hover:bg-slate-50"
+                        onClick={() => applyPrompt(prompt)}
+                      >
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-slate-950">
-                  {selectedFolder?.name ?? "All files"}
-                </h2>
-                <p className="mt-1 text-sm leading-6 text-slate-600">
-                  {selectedFolder
-                    ? selectedFolder.kind === "smart"
-                      ? "These artifacts are grouped here from the block structure inside each doc."
-                      : "Drill down by block themes or open the folder to edit its structure."
-                    : "Choose a folder on the left, or stay here for a workspace-wide view."}
-                </p>
-              </div>
 
-              {selectedFolder?.kind === "folder" ? (
-                <Link
-                  href={`/w/${workspaceSlug}/folders/${selectedFolder.id}`}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                >
-                  <FolderIcon className="h-4 w-4" />
-                  Open folder
-                </Link>
-              ) : null}
-            </div>
+                <div>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-slate-950">
+                        {selectedFolder?.name ?? "All files"}
+                      </h2>
+                    </div>
 
-            {!q.trim() && facetOptions.length > 0 ? (
-              <div className="mt-5 flex flex-wrap gap-2">
-                <FacetChip
-                  label="All blocks"
-                  count={selectedFolder ? selectedFolder.artifactCount : allArtifacts.length}
-                  active={selectedFacetKey === null}
-                  onClick={() => setSelectedFacetKey(null)}
-                />
-                {facetOptions.map((facet) => (
-                  <FacetChip
-                    key={facet.key}
-                    label={facet.label}
-                    count={facet.count}
-                    active={selectedFacetKey === facet.key}
-                    onClick={() =>
-                      setSelectedFacetKey((current) => (current === facet.key ? null : facet.key))
-                    }
-                  />
-                ))}
-              </div>
-            ) : null}
+                    {selectedFolder?.kind === "folder" ? (
+                      <Link
+                        href={`/w/${workspaceSlug}/folders/${selectedFolder.id}`}
+                        className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3.5 py-2 text-xs font-medium text-slate-900 shadow-[0_8px_20px_-18px_rgba(4,12,27,0.12)] hover:border-slate-400 hover:bg-slate-50"
+                      >
+                        Open folder
+                        <ArrowUpRightIcon className="h-4 w-4" />
+                      </Link>
+                    ) : null}
+                  </div>
 
-            {error ? <div className="mt-5 text-sm font-medium text-red-600">{error}</div> : null}
-
-            {q.trim() ? (
-              <div className="mt-6 grid gap-6">
-                <ResultSection
-                  title="Artifacts"
-                  subtitle={`${searchArtifacts.length} match${searchArtifacts.length === 1 ? "" : "es"}`}
-                >
-                  {searchArtifacts.length > 0 ? (
-                    <ul className="grid gap-2">
-                      {searchArtifacts.map((artifact) => (
-                        <ArtifactListItem
-                          key={artifact.id}
-                          workspaceSlug={workspaceSlug}
-                          artifact={artifact}
-                          showLocation={selectedFolderKey === "all"}
+                  {facetOptions.length > 0 ? (
+                    <div className="mt-5 flex flex-wrap gap-2">
+                      <FacetChip
+                        label="All blocks"
+                        count={selectedFolder ? selectedFolder.artifactCount : allArtifacts.length}
+                        active={selectedFacetKey === null}
+                        onClick={() => setSelectedFacetKey(null)}
+                      />
+                      {facetOptions.map((facet) => (
+                        <FacetChip
+                          key={facet.key}
+                          label={facet.label}
+                          count={facet.count}
+                          active={selectedFacetKey === facet.key}
+                          onClick={() =>
+                            setSelectedFacetKey((current) => (current === facet.key ? null : facet.key))
+                          }
                         />
                       ))}
-                    </ul>
-                  ) : (
-                    <EmptyPanel message="No artifact titles match here." />
-                  )}
-                </ResultSection>
+                    </div>
+                  ) : null}
 
-                <ResultSection
-                  title="Blocks"
-                  subtitle={`${searchBlocks.length} match${searchBlocks.length === 1 ? "" : "es"}`}
-                >
-                  {searchBlocks.length > 0 ? (
-                    <ul className="grid gap-2">
-                      {searchBlocks.map((block) => (
-                        <li
-                          key={block.block_id}
-                          className="rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3"
-                        >
-                          <Link
-                            className="block truncate text-sm font-semibold text-slate-900 hover:text-blue-600"
-                            href={`/w/${workspaceSlug}/artifacts/${block.artifact_id}`}
-                            title={block.artifact_title}
-                          >
-                            {block.artifact_title}
-                          </Link>
-                          <div className="mt-1 text-xs leading-5 text-slate-600">
-                            {block.block_title || defaultBlockLabel(block.block_type)} · {defaultBlockLabel(block.block_type)}
-                            {selectedFolderKey === "all" ? ` · ${block.browse_group_name}` : ""}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <EmptyPanel message="No blocks match this query." />
-                  )}
-                </ResultSection>
+                  {error ? <div className="mt-5 text-sm font-medium text-red-600">{error}</div> : null}
+
+                  <div className="mt-6">
+                    {browseArtifacts.length > 0 ? (
+                      <ul className="grid gap-3">
+                        {browseArtifacts.map((artifact) => (
+                          <ArtifactListItem
+                            key={artifact.id}
+                            workspaceSlug={workspaceSlug}
+                            artifact={artifact}
+                            showLocation={selectedFolderKey === "all"}
+                          />
+                        ))}
+                      </ul>
+                    ) : (
+                      <EmptyPanel
+                        message={
+                          selectedFacetKey
+                            ? "No files match that block theme in this view."
+                            : "Nothing is in this view yet. Create a folder or artifact from the top bar."
+                        }
+                      />
+                    )}
+                  </div>
+                </div>
               </div>
             ) : (
-              <div className="mt-6">
-                {browseArtifacts.length > 0 ? (
-                  <ul className="grid gap-2">
-                    {browseArtifacts.map((artifact) => (
-                      <ArtifactListItem
-                        key={artifact.id}
-                        workspaceSlug={workspaceSlug}
-                        artifact={artifact}
-                        showLocation={selectedFolderKey === "all"}
-                      />
-                    ))}
-                  </ul>
-                ) : (
-                  <EmptyPanel
-                    message={
-                      selectedFacetKey
-                        ? "No artifacts match that block theme in this folder."
-                        : "Nothing is in this view yet. Create a folder or artifact from the top bar."
-                    }
-                  />
-                )}
+              <div className="grid gap-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-slate-950">
+                      {q}
+                    </h2>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <SearchModeButton
+                      label="Answer"
+                      meta={aiBrief ? `${aiBrief.sources.length} sources` : "0"}
+                      active={queryView === "answer"}
+                      onClick={() => setQueryView("answer")}
+                    />
+                    <SearchModeButton
+                      label="Files"
+                      meta={`${searchArtifacts.length}`}
+                      active={queryView === "artifacts"}
+                      onClick={() => setQueryView("artifacts")}
+                    />
+                    <SearchModeButton
+                      label="Blocks"
+                      meta={`${searchBlocks.length}`}
+                      active={queryView === "blocks"}
+                      onClick={() => setQueryView("blocks")}
+                    />
+                  </div>
+                </div>
+
+                {error ? <div className="text-sm font-medium text-red-600">{error}</div> : null}
+
+                <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+                  <div className="min-w-0">
+                    {queryView === "answer" ? (
+                      aiBrief ? (
+                        <AiAnswerPanel
+                          brief={aiBrief}
+                          onPromptClick={applyPrompt}
+                          onOpenArtifacts={() => setQueryView("artifacts")}
+                          onOpenBlocks={() => setQueryView("blocks")}
+                        />
+                      ) : (
+                        <EmptyPanel message="Try a broader phrase." />
+                      )
+                    ) : null}
+
+                    {queryView === "artifacts" ? (
+                      <ResultSection
+                        title="Matching files"
+                        subtitle={`${searchArtifacts.length} file${searchArtifacts.length === 1 ? "" : "s"}`}
+                      >
+                        {searchArtifacts.length > 0 ? (
+                          <ul className="grid gap-3">
+                            {searchArtifacts.map((artifact) => (
+                              <ArtifactListItem
+                                key={artifact.id}
+                                workspaceSlug={workspaceSlug}
+                                artifact={artifact}
+                                showLocation={selectedFolderKey === "all"}
+                              />
+                            ))}
+                          </ul>
+                        ) : (
+                          <EmptyPanel message="No file titles match here." />
+                        )}
+                      </ResultSection>
+                    ) : null}
+
+                    {queryView === "blocks" ? (
+                      <ResultSection
+                        title="Supporting blocks"
+                        subtitle={`${searchBlocks.length} block${searchBlocks.length === 1 ? "" : "s"}`}
+                      >
+                        {searchBlocks.length > 0 ? (
+                          <ul className="grid gap-3">
+                            {searchBlocks.map((block) => (
+                              <BlockListItem key={block.block_id} workspaceSlug={workspaceSlug} block={block} />
+                            ))}
+                          </ul>
+                        ) : (
+                          <EmptyPanel message="No block content matches this query." />
+                        )}
+                      </ResultSection>
+                    ) : null}
+                  </div>
+
+                  <aside className="grid gap-3">
+                    <SearchSideCard
+                      title="Best sources"
+                      subtitle={aiBrief ? `${aiBrief.sources.length} source${aiBrief.sources.length === 1 ? "" : "s"}` : undefined}
+                    >
+                      {aiBrief && aiBrief.sources.length > 0 ? (
+                        <div className="grid gap-2">
+                          {aiBrief.sources.map((artifact) => (
+                            <SourceArtifactCard
+                              key={artifact.id}
+                              artifact={artifact}
+                              workspaceSlug={workspaceSlug}
+                              onSelectFolder={() => setSelectedFolderKey(artifact.browse_group_key)}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <EmptyInset message="Sources will appear once Loop has enough evidence to answer." />
+                      )}
+                    </SearchSideCard>
+
+                    <SearchSideCard
+                      title="Refine"
+                    >
+                      <div className="grid gap-3">
+                        {aiBrief?.topFolderKey && aiBrief.topFolderName ? (
+                          <button
+                            type="button"
+                            className="rounded-2xl border border-slate-300 bg-white px-3 py-3 text-left text-sm text-slate-900 shadow-[0_10px_24px_-20px_rgba(4,12,27,0.1)] hover:border-slate-400 hover:bg-slate-50"
+                            onClick={() => setSelectedFolderKey(aiBrief.topFolderKey!)}
+                          >
+                            Focus {aiBrief.topFolderName}
+                          </button>
+                        ) : null}
+                        <div className="flex flex-wrap gap-2">
+                          {aiBrief?.topThemes.map((theme) => (
+                            <button
+                              key={theme}
+                              type="button"
+                              className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 shadow-[0_8px_18px_-18px_rgba(4,12,27,0.1)] hover:border-slate-400 hover:bg-slate-50"
+                              onClick={() => setSelectedFacetKey(`title:${normalizeLabel(theme)}`)}
+                            >
+                              {theme}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </SearchSideCard>
+                  </aside>
+                </div>
               </div>
             )}
           </section>
         </div>
       </section>
     </main>
+  );
+}
+
+function PromptChip(props: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={props.onClick}
+      className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 shadow-[0_8px_18px_-18px_rgba(4,12,27,0.1)] transition hover:border-slate-400 hover:bg-slate-50"
+    >
+      {props.label}
+    </button>
   );
 }
 
@@ -663,16 +835,154 @@ function FolderNavButton(props: {
       className={[
         "grid w-full grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border px-3 py-3 text-left text-sm transition",
         props.active
-          ? "border-slate-300 bg-white text-slate-950 shadow-sm"
-          : "border-transparent text-slate-700 hover:border-slate-200 hover:bg-white/85",
+          ? "border-slate-900 bg-slate-950 text-white shadow-[0_12px_28px_-24px_rgba(4,12,27,0.3)]"
+          : "border-slate-300 bg-white text-slate-900 hover:border-slate-400 hover:bg-slate-50",
       ].join(" ")}
     >
-      <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white text-slate-600 shadow-sm">
+      <span
+        className={[
+          "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border",
+          props.active
+            ? "border-white/15 bg-white/10 text-white"
+            : "border-slate-300 bg-white text-slate-700 shadow-[0_6px_16px_-16px_rgba(4,12,27,0.16)]",
+        ].join(" ")}
+      >
         {props.icon}
       </span>
       <span className="truncate font-medium">{props.label}</span>
-      <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">{props.meta}</span>
+      <span
+        className={[
+          "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium",
+          props.active ? "bg-white/12 text-white" : "border border-slate-300 bg-white text-slate-800",
+        ].join(" ")}
+      >
+        {props.meta}
+      </span>
     </button>
+  );
+}
+
+function SearchModeButton(props: {
+  label: string;
+  meta: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={props.onClick}
+      className={[
+        "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium transition",
+        props.active
+          ? "border-slate-950 bg-slate-950 text-white"
+          : "border-slate-300 bg-white text-slate-800 hover:border-slate-400 hover:bg-slate-50",
+      ].join(" ")}
+    >
+      <span>{props.label}</span>
+      <span className={props.active ? "text-white/70" : "text-slate-500"}>{props.meta}</span>
+    </button>
+  );
+}
+
+function SearchSideCard(props: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={`${crispCardClass} p-4`}>
+      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-700">
+        {props.title}
+      </div>
+      {props.subtitle ? <div className="mt-1 text-sm leading-6 text-slate-700">{props.subtitle}</div> : null}
+      <div className="mt-4">{props.children}</div>
+    </div>
+  );
+}
+
+function AiAnswerPanel(props: {
+  brief: SearchBrief;
+  onPromptClick: (prompt: string) => void;
+  onOpenArtifacts: () => void;
+  onOpenBlocks: () => void;
+}) {
+  const statusLabel =
+    props.brief.status === "high"
+      ? "High signal"
+      : props.brief.status === "partial"
+        ? "Partial signal"
+        : "Low signal";
+
+  return (
+    <div className={`${crispCardClass} overflow-hidden`}>
+      <div className="border-b border-slate-300 px-5 py-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-800 shadow-[0_8px_18px_-18px_rgba(4,12,27,0.1)]">
+              <SparkIcon className="h-4 w-4" />
+              {statusLabel}
+            </div>
+            <h3 className="mt-3 text-[22px] font-semibold tracking-[-0.03em] text-slate-950">
+              {props.brief.headline}
+            </h3>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-700">{props.brief.summary}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="secondary" onClick={props.onOpenArtifacts}>
+              Files
+            </Button>
+            <Button type="button" variant="secondary" onClick={props.onOpenBlocks}>
+              Blocks
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-5 px-5 py-5 lg:grid-cols-[1.1fr_0.9fr]">
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-700">
+            Signal
+          </div>
+          <div className="mt-3 grid gap-2">
+            {props.brief.bullets.map((bullet) => (
+              <div
+                key={bullet}
+                className="rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm leading-6 text-slate-800 shadow-[0_8px_18px_-18px_rgba(4,12,27,0.1)]"
+              >
+                {bullet}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-700">Next</div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {props.brief.followUps.map((prompt) => (
+              <PromptChip key={prompt} label={prompt} onClick={() => props.onPromptClick(prompt)} />
+            ))}
+          </div>
+          {props.brief.supportingBlocks.length > 0 ? (
+            <div className="mt-5 grid gap-2">
+              {props.brief.supportingBlocks.slice(0, 3).map((block) => (
+                <div
+                  key={block.block_id}
+                  className="rounded-2xl border border-slate-300 bg-white px-3 py-3 shadow-[0_8px_18px_-18px_rgba(4,12,27,0.1)]"
+                >
+                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-700">
+                    {block.block_title || defaultBlockLabel(block.block_type)}
+                  </div>
+                  <div className="mt-2 text-sm leading-6 text-slate-800">
+                    {block.content_excerpt.trim() || "Matching language appears in this block."}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -684,8 +994,8 @@ function ResultSection(props: {
   return (
     <section className="grid gap-3">
       <div className="flex items-end justify-between gap-3">
-        <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-600">{props.title}</h3>
-        <div className="text-xs font-medium text-slate-500">{props.subtitle}</div>
+        <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-700">{props.title}</h3>
+        <div className="text-xs font-medium text-slate-600">{props.subtitle}</div>
       </div>
       {props.children}
     </section>
@@ -698,30 +1008,35 @@ function ArtifactListItem(props: {
   showLocation?: boolean;
 }) {
   return (
-    <li className="rounded-2xl border border-slate-200 bg-white/92 px-4 py-4 transition hover:border-slate-300 hover:bg-white">
+    <li className="rounded-2xl border border-slate-300 bg-white px-4 py-4 shadow-[0_12px_28px_-22px_rgba(4,12,27,0.1)] transition hover:border-slate-400 hover:bg-slate-50">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
-          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
+          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-300 bg-white text-slate-700 shadow-[0_8px_20px_-18px_rgba(4,12,27,0.12)]">
             <NewDocIcon className="h-5 w-5" />
           </span>
           <div className="min-w-0">
             <Link
-              className="block truncate text-base font-semibold text-slate-900 hover:text-blue-600"
+              className="block truncate text-base font-semibold text-slate-950 hover:text-[rgb(var(--accent))]"
               href={`/w/${props.workspaceSlug}/artifacts/${props.artifact.id}`}
               title={props.artifact.title}
             >
               {props.artifact.title}
             </Link>
-            <div className="mt-1 text-xs font-medium leading-5 text-slate-600">
+            <div className="mt-1 text-xs font-medium leading-5 text-slate-700">
               {props.artifact.status} · {new Date(props.artifact.updated_at).toLocaleString()}
               {props.showLocation ? ` · ${props.artifact.browse_group_name}` : ""}
             </div>
+            {props.artifact.summary_excerpt ? (
+              <div className="mt-2 text-sm leading-6 text-slate-700">
+                {props.artifact.summary_excerpt}
+              </div>
+            ) : null}
             {props.artifact.summary_blocks.length > 0 ? (
               <div className="mt-3 flex flex-wrap gap-2">
                 {props.artifact.summary_blocks.map((block, index) => (
                   <span
                     key={`${props.artifact.id}-${block.type}-${block.title ?? index}`}
-                    className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600"
+                    className="rounded-full border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-800"
                   >
                     {block.title || defaultBlockLabel(block.type)}
                   </span>
@@ -732,6 +1047,76 @@ function ArtifactListItem(props: {
         </div>
       </div>
     </li>
+  );
+}
+
+function BlockListItem(props: {
+  workspaceSlug: string;
+  block: SearchBlockMatch;
+}) {
+  return (
+    <li className="rounded-2xl border border-slate-300 bg-white px-4 py-4 shadow-[0_12px_28px_-22px_rgba(4,12,27,0.1)]">
+      <Link
+        className="block truncate text-base font-semibold text-slate-950 hover:text-[rgb(var(--accent))]"
+        href={`/w/${props.workspaceSlug}/artifacts/${props.block.artifact_id}`}
+        title={props.block.artifact_title}
+      >
+        {props.block.artifact_title}
+      </Link>
+      <div className="mt-1 text-xs font-medium leading-5 text-slate-700">
+        {props.block.block_title || defaultBlockLabel(props.block.block_type)} ·{" "}
+        {defaultBlockLabel(props.block.block_type)} · {props.block.browse_group_name}
+      </div>
+      <div className="mt-3 rounded-2xl border border-slate-300 bg-white px-3 py-3 text-sm leading-6 text-slate-800">
+        {props.block.content_excerpt.trim() || "Matching language appears in this block."}
+      </div>
+    </li>
+  );
+}
+
+function SourceArtifactCard(props: {
+  workspaceSlug: string;
+  artifact: ExplorerArtifact;
+  onSelectFolder: () => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-300 bg-white px-3 py-3 shadow-[0_10px_24px_-20px_rgba(4,12,27,0.1)]">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold text-slate-950">{props.artifact.title}</div>
+          <div className="mt-1 text-xs text-slate-600">{props.artifact.browse_group_name}</div>
+        </div>
+        <Link
+          href={`/w/${props.workspaceSlug}/artifacts/${props.artifact.id}`}
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50"
+          aria-label={`Open ${props.artifact.title}`}
+        >
+          <ArrowUpRightIcon className="h-4 w-4" />
+        </Link>
+      </div>
+
+      {props.artifact.summary_excerpt ? (
+        <div className="mt-3 text-sm leading-6 text-slate-700">{props.artifact.summary_excerpt}</div>
+      ) : null}
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="rounded-full border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-800 hover:border-slate-400 hover:bg-slate-50"
+          onClick={props.onSelectFolder}
+        >
+          Focus folder
+        </button>
+        {props.artifact.summary_blocks.slice(0, 2).map((block, index) => (
+          <span
+            key={`${props.artifact.id}-theme-${block.type}-${block.title ?? index}`}
+            className="rounded-full border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-700"
+          >
+            {block.title || defaultBlockLabel(block.type)}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -748,8 +1133,8 @@ function FacetChip(props: {
       className={[
         "rounded-full border px-3 py-2 text-xs font-medium transition",
         props.active
-          ? "border-slate-300 bg-white text-slate-900 shadow-sm"
-          : "border-slate-200 bg-white/85 text-slate-600 hover:bg-white",
+          ? "border-slate-950 bg-slate-950 text-white"
+          : "border-slate-300 bg-white text-slate-800 hover:border-slate-400 hover:bg-slate-50",
       ].join(" ")}
     >
       {props.label} · {props.count}
@@ -759,7 +1144,15 @@ function FacetChip(props: {
 
 function EmptyPanel(props: { message: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 px-5 py-7 text-sm leading-6 text-slate-600">
+    <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-7 text-sm leading-6 text-slate-700">
+      {props.message}
+    </div>
+  );
+}
+
+function EmptyInset(props: { message: string }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-4 text-sm leading-6 text-slate-700">
       {props.message}
     </div>
   );
@@ -788,6 +1181,161 @@ function buildFacetOptions(artifacts: ExplorerArtifact[]): FacetOption[] {
   return Array.from(counts.values())
     .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label))
     .slice(0, 8);
+}
+
+function buildStarterPrompts(input: {
+  selectedFolder: ExplorerFolder | null;
+  actualFolders: ExplorerFolder[];
+  smartFolders: ExplorerFolder[];
+  facets: FacetOption[];
+}) {
+  const prompts: string[] = [];
+  if (input.selectedFolder) {
+    prompts.push(`What changed inside ${input.selectedFolder.name}?`);
+  } else if (input.actualFolders[0]) {
+    prompts.push(`What changed across ${input.actualFolders[0].name}?`);
+  }
+
+  if (input.facets[0]) {
+    prompts.push(`Which files mention ${input.facets[0].label}?`);
+  }
+
+  if (input.smartFolders[0]) {
+    prompts.push(`What is still unresolved in ${input.smartFolders[0].name}?`);
+  }
+
+  if (input.actualFolders[1]) {
+    prompts.push(`Compare ${input.actualFolders[0]?.name ?? "folders"} and ${input.actualFolders[1].name}`);
+  }
+
+  return prompts.filter(Boolean).slice(0, 4);
+}
+
+function buildSearchBrief(input: {
+  query: string;
+  artifacts: ExplorerArtifact[];
+  blocks: SearchBlockMatch[];
+  allArtifacts: ExplorerArtifact[];
+  selectedFolder: ExplorerFolder | null;
+}): SearchBrief | null {
+  const query = input.query.trim();
+  if (!query) return null;
+
+  const sourceMap = new Map<string, ExplorerArtifact>();
+  for (const artifact of input.artifacts) {
+    sourceMap.set(artifact.id, artifact);
+  }
+  for (const block of input.blocks) {
+    const artifact = input.allArtifacts.find((candidate) => candidate.id === block.artifact_id);
+    if (artifact && !sourceMap.has(artifact.id)) sourceMap.set(artifact.id, artifact);
+  }
+
+  const sources = Array.from(sourceMap.values()).slice(0, 3);
+  const folderCounts = new Map<string, { key: string; count: number }>();
+  const themeCounts = new Map<string, number>();
+
+  for (const artifact of input.artifacts) {
+    folderCounts.set(artifact.browse_group_name, {
+      key: artifact.browse_group_key,
+      count: (folderCounts.get(artifact.browse_group_name)?.count ?? 0) + 1,
+    });
+    for (const block of artifact.summary_blocks) {
+      const label = block.title?.trim() || defaultBlockLabel(block.type);
+      themeCounts.set(label, (themeCounts.get(label) ?? 0) + 1);
+    }
+  }
+
+  for (const block of input.blocks) {
+    const label = block.block_title?.trim() || defaultBlockLabel(block.block_type);
+    themeCounts.set(label, (themeCounts.get(label) ?? 0) + 1);
+    folderCounts.set(block.browse_group_name, {
+      key: block.browse_group_key,
+      count: (folderCounts.get(block.browse_group_name)?.count ?? 0) + 1,
+    });
+  }
+
+  const sortedThemes = Array.from(themeCounts.entries())
+    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+    .slice(0, 3)
+    .map(([label]) => label);
+
+  const topFolder = Array.from(folderCounts.entries())
+    .sort((left, right) => right[1].count - left[1].count || left[0].localeCompare(right[0]))[0];
+
+  const artifactCount = input.artifacts.length;
+  const blockCount = input.blocks.length;
+
+  const status: SearchBrief["status"] =
+    artifactCount >= 3 || blockCount >= 6 ? "high" : artifactCount > 0 || blockCount > 0 ? "partial" : "low";
+
+  if (artifactCount === 0 && blockCount === 0) {
+    return {
+      status,
+      headline: "Broaden the phrasing",
+      summary:
+        input.selectedFolder
+          ? `No direct evidence surfaced inside ${input.selectedFolder.name}. Try a broader term, a teammate name, or a block theme.`
+          : "No direct evidence surfaced yet. Try a broader term, a folder name, or a block theme.",
+      bullets: [
+        "Widen the phrasing beyond an exact product or project name.",
+        "Try asking for a theme such as risks, dependencies, or rollout.",
+        "Use the folder rail on the left to constrain the search before asking again.",
+      ],
+      sources: [],
+      supportingBlocks: [],
+      followUps: [
+        `What mentions risks related to ${query}?`,
+        `Which files are closest to ${query}?`,
+        "Show me unresolved open questions",
+      ],
+      topFolderKey: null,
+      topFolderName: null,
+      topThemes: [],
+    };
+  }
+
+  const sourceTitles = sources.slice(0, 2).map((source) => source.title);
+  const summary =
+    artifactCount > 0
+      ? `Ace found ${artifactCount} file${artifactCount === 1 ? "" : "s"} and ${blockCount} supporting block${
+          blockCount === 1 ? "" : "s"
+        } related to “${query}”. The clearest signal appears in ${joinList(sourceTitles)}${
+          topFolder ? `, with the strongest concentration in ${topFolder[0]}.` : "."
+        }`
+      : `Ace did not find direct file-title matches for “${query}”, but it did find ${blockCount} supporting block${
+          blockCount === 1 ? "" : "s"
+        } across ${sources.length} file${sources.length === 1 ? "" : "s"}. Start with ${joinList(sourceTitles)}.`;
+
+  const bullets = [
+    topFolder ? `Most of the evidence sits under ${topFolder[0]}.` : null,
+    sortedThemes.length > 0 ? `Common sections in the evidence: ${joinList(sortedThemes)}.` : null,
+    sources[0] ? `Most recent source: ${sources[0].title}, updated ${formatShortDateTime(sources[0].updated_at)}.` : null,
+  ].filter((value): value is string => Boolean(value));
+
+  const followUps = [
+    topFolder ? `What changed in ${topFolder[0]}?` : null,
+    sortedThemes[0] ? `Show only ${sortedThemes[0]}` : null,
+    `What is still unresolved about ${query}?`,
+    `Which files disagree on ${query}?`,
+  ].filter((value): value is string => Boolean(value));
+
+  return {
+    status,
+    headline:
+      status === "high"
+        ? "Strong signal"
+        : status === "partial"
+          ? "Partial signal"
+          : "Weak signal",
+    summary,
+    bullets,
+    sources,
+    supportingBlocks: input.blocks.slice(0, 4),
+    followUps: followUps.slice(0, 4),
+    topFolderKey: topFolder?.[1].key ?? null,
+    topFolderName: topFolder?.[0] ?? null,
+    topThemes: sortedThemes,
+  };
 }
 
 function artifactMatchesFacet(artifact: ExplorerArtifact, facetKey: string) {
@@ -823,4 +1371,20 @@ function defaultBlockLabel(type: string) {
 
 function normalizeLabel(value: string) {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-");
+}
+
+function joinList(values: string[]) {
+  if (values.length === 0) return "matching files";
+  if (values.length === 1) return values[0];
+  if (values.length === 2) return `${values[0]} and ${values[1]}`;
+  return `${values.slice(0, -1).join(", ")}, and ${values[values.length - 1]}`;
+}
+
+function formatShortDateTime(value: string) {
+  return new Date(value).toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }

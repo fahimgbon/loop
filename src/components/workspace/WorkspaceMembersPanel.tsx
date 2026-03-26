@@ -71,8 +71,8 @@ export function WorkspaceMembersPanel(props: {
   }
 
   return (
-    <div id="workspace-members-panel" className="rounded-xl border border-white/60 bg-white/50 p-4">
-      <div className="text-sm font-medium">Workspace members</div>
+    <div id="workspace-members-panel" className="rounded-xl border border-slate-200/90 bg-white/96 p-4 shadow-[0_18px_40px_-32px_rgba(15,23,42,0.14)]">
+      <div className="text-sm font-medium text-slate-950">Workspace members</div>
       <div className="mt-1 text-xs text-muted">
         Open any teammate to view their profile. Add existing users by email.
       </div>
@@ -83,13 +83,13 @@ export function WorkspaceMembersPanel(props: {
             key={member.userId}
             type="button"
             onClick={() => setSelectedMemberId(member.userId)}
-            className="flex items-center justify-between gap-2 rounded-lg border border-white/60 bg-white/70 px-3 py-2 text-left transition hover:border-slate-200 hover:bg-white"
+            className="flex items-center justify-between gap-2 rounded-lg border border-slate-200/90 bg-white/98 px-3 py-2 text-left transition hover:border-slate-300 hover:bg-slate-50"
           >
             <div className="min-w-0">
               <div className="truncate text-sm font-medium text-slate-900">{member.name}</div>
               <div className="truncate text-xs text-muted">{member.email}</div>
             </div>
-            <span className="rounded-full border border-white/70 bg-white/80 px-2 py-0.5 text-[11px] uppercase tracking-[0.16em] text-slate-700">
+            <span className="rounded-full border border-slate-200/90 bg-slate-50 px-2 py-0.5 text-[11px] uppercase tracking-[0.16em] text-slate-700">
               {member.role}
             </span>
           </button>
@@ -97,7 +97,7 @@ export function WorkspaceMembersPanel(props: {
       </div>
 
       {props.isAdmin ? (
-        <div className="mt-4 rounded-lg border border-white/60 bg-white/65 p-3">
+        <div className="mt-4 rounded-lg border border-slate-200/90 bg-slate-50/92 p-3">
           <div className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Add account</div>
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
             <Input
@@ -106,7 +106,7 @@ export function WorkspaceMembersPanel(props: {
               placeholder="email@company.com"
             />
             <select
-              className="rounded-md border border-white/70 bg-white/85 px-3 py-2 text-sm outline-none focus:border-accent"
+              className="rounded-md border border-slate-300/90 bg-white/98 px-3 py-2 text-sm outline-none focus:border-accent"
               value={role}
               onChange={(event) => setRole(event.target.value as "admin" | "member")}
             >

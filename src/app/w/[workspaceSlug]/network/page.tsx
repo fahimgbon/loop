@@ -31,11 +31,8 @@ export default async function NetworkPage(props: {
           Network
         </div>
         <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-slate-950">
-          {workspace?.name ?? "Loop"}
+          {workspace?.name ?? "Aceync"}
         </h1>
-        <p className="mt-2 max-w-4xl text-sm leading-7 text-slate-600">
-          Hover to trace links, click to inspect, and search when you want to jump directly.
-        </p>
       </section>
 
       <div className="mt-5">
@@ -44,7 +41,7 @@ export default async function NetworkPage(props: {
           graph={graph}
           mode="full"
           title="Network"
-          subtitle="Saved folders, inferred groups, and the links emerging from real workspace content."
+          subtitle=""
         />
       </div>
     </main>

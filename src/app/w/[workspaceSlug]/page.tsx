@@ -80,19 +80,16 @@ export default async function WorkspacePage(props: { params: Promise<{ workspace
 
   return (
     <main className="px-3 py-3 lg:px-5 lg:py-4">
-      <section className="rounded-[30px] border border-slate-200/80 bg-white/92 p-6 shadow-[0_24px_80px_-56px_rgba(15,23,42,0.28)]">
+      <section className="rounded-[30px] border border-slate-200/90 bg-white/96 p-6 shadow-[0_24px_80px_-56px_rgba(15,23,42,0.22)]">
         <div className="flex flex-wrap items-start justify-between gap-5">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
               <SparkIcon className="h-4 w-4" />
               Workspace
             </div>
             <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-slate-950">
-              {workspace?.name ?? "Loop"}
+              {workspace?.name ?? "Aceync"}
             </h1>
-            <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-600">
-              Capture ideas, shape artifacts, and keep shared context visible.
-            </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <StatPill icon={<GraphIcon className="h-4 w-4" />} label={`${artifacts.length} artifacts`} />
               <StatPill icon={<FolderIcon className="h-4 w-4" />} label={`${folders.length} folders`} />
@@ -111,20 +108,19 @@ export default async function WorkspacePage(props: { params: Promise<{ workspace
           graph={graph}
           mode="overview"
           title="Network"
-          subtitle="A high-level view of how work is grouped and connected."
+          subtitle=""
         />
       </div>
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
         <WorkspaceTeamSurface members={memberSummaries} workspaceSlug={workspaceSlug} variant="grid" />
 
-        <section className="rounded-[28px] border border-slate-200/80 bg-white/92 p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.3)]">
+        <section className="rounded-[28px] border border-slate-200/90 bg-white/96 p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Open threads</div>
-              <div className="mt-1 text-sm text-slate-600">Requests that are currently pulling more than one perspective into the work.</div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">Open threads</div>
             </div>
-            <Link href={`/w/${workspaceSlug}/inbox`} className="text-xs font-medium text-slate-700 hover:text-slate-950">
+            <Link href={`/w/${workspaceSlug}/inbox`} className="text-xs font-medium text-slate-800 hover:text-slate-950">
               Open inbox
             </Link>
           </div>
@@ -134,17 +130,17 @@ export default async function WorkspacePage(props: { params: Promise<{ workspace
                 <Link
                   key={request.id}
                   href={`/w/${workspaceSlug}/review-requests/${request.id}`}
-                  className="rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-3 transition hover:border-slate-300 hover:bg-white"
+                  className="rounded-2xl border border-slate-200/90 bg-slate-50/92 px-3 py-3 transition hover:border-slate-300 hover:bg-white"
                 >
                   <div className="text-sm font-medium text-slate-900">{request.title}</div>
-                  <div className="mt-1 text-xs text-slate-500">
+                  <div className="mt-1 text-xs text-slate-600">
                     {artifactTitleById.get(request.artifact_id) ?? "Artifact"}
                     {request.due_at ? ` · Due ${new Date(request.due_at).toLocaleDateString()}` : ""}
                   </div>
                 </Link>
               ))
             ) : (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-3 py-4 text-sm text-slate-500">
+              <div className="rounded-2xl border border-dashed border-slate-300/90 bg-slate-50/92 px-3 py-4 text-sm text-slate-700">
                 No open threads right now. Create a review request from any artifact to make collaboration visible here.
               </div>
             )}
@@ -153,18 +149,15 @@ export default async function WorkspacePage(props: { params: Promise<{ workspace
       </div>
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <section className="rounded-[28px] border border-slate-200/80 bg-white/92 p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.3)]">
+        <section className="rounded-[28px] border border-slate-200/90 bg-white/96 p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Shared folders</div>
-              <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-slate-950">Organize work as living collections</h2>
-              <p className="mt-1 text-sm leading-6 text-slate-600">
-                Folders keep recurring work consistent. Each one below is summarized from the artifacts inside it.
-              </p>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">Shared folders</div>
+              <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-slate-950">Folders</h2>
             </div>
             <Link
               href={`/w/${workspaceSlug}/folders`}
-              className="inline-flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-3.5 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
+              className="inline-flex items-center gap-2 rounded-2xl border border-slate-300/90 bg-white/98 px-3.5 py-2 text-sm font-medium text-slate-900 hover:bg-slate-50"
             >
               <FolderIcon className="h-4 w-4" />
               Open folders
@@ -187,24 +180,21 @@ export default async function WorkspacePage(props: { params: Promise<{ workspace
                 </Link>
               ))
             ) : (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-4 py-5 text-sm text-slate-500">
+              <div className="rounded-2xl border border-dashed border-slate-300/90 bg-slate-50/92 px-4 py-5 text-sm text-slate-700">
                 No saved folders yet. The inferred clusters on the right can guide what should become a shared folder next.
               </div>
             )}
           </div>
         </section>
 
-        <section className="rounded-[28px] border border-slate-200/80 bg-white/92 p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.3)]">
-          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+        <section className="rounded-[28px] border border-slate-200/90 bg-white/96 p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
+          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
             <SparkIcon className="h-4 w-4" />
-            Suggested structures
-          </div>
-          <div className="mt-1 text-sm leading-6 text-slate-600">
-            These clusters are inferred from transcription and block structure. Turn the ones that keep recurring into permanent folders.
+            Suggested
           </div>
           <div className="mt-4 grid gap-3">
             {smartCollections.slice(0, 5).map((collection) => (
-              <div key={collection.key} className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-4">
+              <div key={collection.key} className="rounded-[24px] border border-slate-200/90 bg-slate-50/92 p-4">
                 <FolderCard
                   name={collection.name}
                   subtitle="Inferred from current artifacts"
@@ -225,12 +215,12 @@ export default async function WorkspacePage(props: { params: Promise<{ workspace
       </div>
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <section className="rounded-[28px] border border-slate-200/80 bg-white/92 p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.3)]">
-          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+        <section className="rounded-[28px] border border-slate-200/90 bg-white/96 p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
+          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
             <CaptureIcon className="h-4 w-4" />
             Capture from anywhere
           </div>
-          <div className="mt-1 text-sm leading-6 text-slate-600">
+          <div className="mt-1 text-sm leading-6 text-slate-700">
             Voice is still the lowest-friction input. Record directly into the workspace or turn a meeting into a structured artifact without leaving the flow.
           </div>
           <div className="mt-4">
@@ -245,9 +235,9 @@ export default async function WorkspacePage(props: { params: Promise<{ workspace
         </section>
 
         <section className="grid gap-4">
-          <div className="rounded-[28px] border border-slate-200/80 bg-white/92 p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.3)]">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Slack</div>
-            <div className="mt-1 text-sm text-slate-600">
+          <div className="rounded-[28px] border border-slate-200/90 bg-white/96 p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">Slack</div>
+            <div className="mt-1 text-sm text-slate-700">
               {slack ? `Connected to ${slack.slack_team_name ?? slack.slack_team_id}` : "Not connected yet"}
             </div>
             <div className="mt-4">
@@ -258,9 +248,9 @@ export default async function WorkspacePage(props: { params: Promise<{ workspace
             </div>
           </div>
 
-          <div className="rounded-[28px] border border-slate-200/80 bg-white/92 p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.3)]">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Google Workspace</div>
-            <div className="mt-1 text-sm text-slate-600">
+          <div className="rounded-[28px] border border-slate-200/90 bg-white/96 p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">Google Workspace</div>
+            <div className="mt-1 text-sm text-slate-700">
               {google ? `Connected to ${google.email ?? "Google account"}` : "Not connected yet"}
             </div>
             <div className="mt-4">
@@ -275,8 +265,8 @@ export default async function WorkspacePage(props: { params: Promise<{ workspace
       </div>
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <section className="rounded-[28px] border border-slate-200/80 bg-white/92 p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.3)]">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Announcements and logs</div>
+        <section className="rounded-[28px] border border-slate-200/90 bg-white/96 p-5 shadow-[0_18px_50px_-40px_rgba(15,23,42,0.22)]">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">Announcements and logs</div>
           <div className="mt-4">
             <AnnouncementLog
               workspaceSlug={workspaceSlug}

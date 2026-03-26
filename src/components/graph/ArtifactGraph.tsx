@@ -317,7 +317,7 @@ export function ArtifactGraph(props: {
   return (
     <section
       className={[
-        "rounded-[30px] border border-slate-200/80 bg-white/94 shadow-[0_24px_80px_-56px_rgba(15,23,42,0.14)]",
+        "glass-strong rounded-[30px] border border-slate-300 bg-white/88 shadow-[0_26px_86px_-56px_rgba(4,12,27,0.16)]",
         isOverview ? "p-5" : "p-6",
       ].join(" ")}
     >
@@ -348,7 +348,7 @@ export function ArtifactGraph(props: {
             <button
               type="button"
               onClick={openNetwork}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-800 shadow-[0_10px_28px_-22px_rgba(4,12,27,0.24)] transition hover:border-slate-400 hover:bg-slate-50"
               aria-label="Open network"
               title="Open network"
             >
@@ -368,7 +368,7 @@ export function ArtifactGraph(props: {
                 placeholder="Search artifacts, groups, or themes"
               />
               {suggestions.length > 0 ? (
-                <div className="absolute inset-x-0 top-[calc(100%+8px)] z-30 rounded-[22px] border border-slate-200 bg-white/98 p-2 shadow-[0_24px_50px_-28px_rgba(15,23,42,0.18)]">
+                <div className="absolute inset-x-0 top-[calc(100%+8px)] z-30 rounded-[22px] border border-slate-300 bg-white p-2 shadow-[0_24px_50px_-28px_rgba(4,12,27,0.16)]">
                   {suggestions.map((node) => (
                     <button
                       key={node.id}
@@ -380,7 +380,7 @@ export function ArtifactGraph(props: {
                         <div className="truncate text-sm font-medium text-slate-900">{node.title}</div>
                         <div className="truncate text-xs text-slate-500">{node.collectionName}</div>
                       </div>
-                      <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] text-slate-500">
+                      <span className="rounded-full border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-600">
                         {node.keywords[0] ?? "artifact"}
                       </span>
                     </button>
@@ -498,12 +498,12 @@ function OverviewTree(props: {
 
   return (
     <div className="mt-5">
-        <div
-          className={[
-            "network-canvas overflow-hidden rounded-[28px] border border-slate-200/80 transition duration-200",
-            props.launching ? "scale-[1.01] opacity-0 blur-[2px]" : "scale-100 opacity-100",
-          ].join(" ")}
-        >
+      <div
+        className={[
+          "network-canvas overflow-hidden rounded-[28px] border border-slate-300 transition duration-200",
+          props.launching ? "scale-[1.01] opacity-0 blur-[2px]" : "scale-100 opacity-100",
+        ].join(" ")}
+      >
         <div className="network-canvas-grid" />
         <div className="relative h-[430px]">
           <svg viewBox={`0 0 ${width} ${height}`} className="absolute inset-0 h-full w-full" aria-hidden="true">
@@ -612,7 +612,7 @@ function OverviewTree(props: {
         </div>
       </div>
 
-      <div className="mt-3 flex items-center justify-between gap-3 rounded-[20px] border border-slate-200 bg-slate-50/78 px-4 py-2.5">
+      <div className="glass mt-3 flex items-center justify-between gap-3 rounded-[20px] border border-slate-300 bg-white/86 px-4 py-2.5 shadow-[0_16px_40px_-32px_rgba(4,12,27,0.16)]">
         <div className="min-w-0">
           <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Focus</div>
           <div className="truncate text-sm font-medium text-slate-900">
@@ -680,10 +680,10 @@ function FullTree(props: {
 
   return (
     <div className="mt-5">
-      <div className="network-canvas overflow-hidden rounded-[30px] border border-slate-200/80">
+      <div className="network-canvas overflow-hidden rounded-[30px] border border-slate-300">
         <div className="network-canvas-grid" />
         <div className="relative h-[760px]">
-          <div className="absolute left-6 top-6 z-20 flex max-w-[300px] items-center gap-3 rounded-full border border-slate-200 bg-white/92 px-3 py-2.5 text-slate-900 shadow-[0_20px_50px_-38px_rgba(15,23,42,0.2)] backdrop-blur">
+          <div className="glass absolute left-6 top-6 z-20 flex max-w-[280px] items-center gap-3 rounded-full border border-slate-300 bg-white/86 px-3 py-2.5 text-slate-900 shadow-[0_20px_50px_-38px_rgba(4,12,27,0.16)]">
             <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
               Focus
             </span>
@@ -702,7 +702,7 @@ function FullTree(props: {
             {props.rootNode ? (
               <Link
                 href={`/w/${props.workspaceSlug}/artifacts/${props.rootNode.id}`}
-                className="inline-flex h-8 shrink-0 items-center rounded-full border border-slate-200 bg-slate-50 px-3 text-xs font-medium text-slate-700 transition hover:bg-white"
+                className="inline-flex h-8 shrink-0 items-center rounded-full border border-slate-300 bg-white px-3 text-xs font-medium text-slate-800 transition hover:border-slate-400 hover:bg-slate-50"
               >
                 Open
               </Link>
@@ -711,12 +711,12 @@ function FullTree(props: {
 
           <div className="absolute left-6 top-[82px] z-20 flex flex-wrap gap-2">
             {props.activeCollection ? (
-              <span className="rounded-full border border-slate-200 bg-white/92 px-3 py-1.5 text-xs font-medium text-slate-700">
+              <span className="rounded-full border border-slate-300 bg-white/94 px-3 py-1.5 text-xs font-medium text-slate-800">
                 {describeCollection(props.activeCollection)}
               </span>
             ) : null}
             {props.activeCollection?.kind === "smart" ? (
-              <span className="rounded-full border border-dashed border-slate-300 bg-white/88 px-3 py-1.5 text-xs text-slate-500">
+              <span className="rounded-full border border-dashed border-slate-300 bg-white/92 px-3 py-1.5 text-xs text-slate-600">
                 Suggested cluster
               </span>
             ) : null}
@@ -727,14 +727,14 @@ function FullTree(props: {
             <button
               type="button"
               onClick={props.onReset}
-              className="rounded-full border border-slate-300 bg-white/92 px-3 py-2 text-xs text-slate-600 shadow-sm transition hover:bg-slate-50"
+              className="rounded-full border border-slate-300 bg-white px-3 py-2 text-xs text-slate-700 shadow-[0_10px_24px_-18px_rgba(4,12,27,0.18)] transition hover:border-slate-400 hover:bg-slate-50"
             >
               {Math.round(props.scale * 100)}%
             </button>
             <CanvasControlButton onClick={props.onZoomIn}>+</CanvasControlButton>
           </div>
 
-          <div className="absolute right-6 top-6 z-20 rounded-full border border-slate-200 bg-white/90 px-3 py-2 text-[11px] text-slate-500 shadow-sm">
+          <div className="absolute right-6 top-6 z-20 rounded-full border border-slate-300 bg-white/94 px-3 py-2 text-[11px] text-slate-600 shadow-[0_10px_24px_-18px_rgba(4,12,27,0.14)]">
             Hover to trace. Click to shift.
           </div>
 
@@ -875,11 +875,11 @@ function FullTree(props: {
 
 function TreeNodeCard(props: TreeCard) {
   const toneClasses: Record<CanvasNodeTone, string> = {
-    root: "border-[rgba(101,149,255,0.24)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(233,241,255,0.9))] text-slate-950 shadow-[0_24px_60px_-40px_rgba(101,149,255,0.22)]",
-    collection: "border-slate-200 bg-white/96 text-slate-900 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.16)]",
-    smart: "border-[rgba(141,150,255,0.28)] bg-[linear-gradient(180deg,rgba(255,255,255,0.97),rgba(243,241,255,0.92))] text-slate-900 shadow-[0_18px_44px_-34px_rgba(141,150,255,0.18)]",
-    artifact: "border-slate-200 bg-white/98 text-slate-900 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.16)]",
-    accent: "border-[rgba(230,176,210,0.28)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(252,242,247,0.92))] text-slate-900 shadow-[0_24px_60px_-42px_rgba(230,176,210,0.18)]",
+    root: "border-[rgba(52,101,255,0.26)] bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(231,243,255,0.94))] text-slate-950 shadow-[0_22px_58px_-38px_rgba(52,101,255,0.2)]",
+    collection: "border-slate-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(255,255,255,0.96))] text-slate-950 shadow-[0_16px_36px_-28px_rgba(4,12,27,0.14)]",
+    smart: "border-[rgba(143,105,255,0.28)] bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(243,238,255,0.94))] text-slate-950 shadow-[0_20px_46px_-34px_rgba(143,105,255,0.18)]",
+    artifact: "border-slate-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(255,255,255,0.96))] text-slate-950 shadow-[0_16px_36px_-28px_rgba(4,12,27,0.14)]",
+    accent: "border-[rgba(255,182,224,0.36)] bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(255,241,248,0.95))] text-slate-950 shadow-[0_20px_46px_-34px_rgba(255,182,224,0.18)]",
   };
 
   return (
@@ -896,10 +896,10 @@ function TreeNodeCard(props: TreeCard) {
         className={[
           "group flex items-center justify-between gap-3 rounded-[18px] border px-4 py-3 backdrop-blur-sm transition duration-300",
           toneClasses[props.tone],
-          props.active ? "ring-2 ring-[rgba(101,149,255,0.22)]" : "",
+          props.active ? "ring-2 ring-[rgba(52,101,255,0.24)]" : "",
           props.dotted ? "border-dashed" : "",
           props.compact ? "py-2.5" : "",
-          props.onClick ? "cursor-pointer hover:border-slate-300 hover:bg-white" : "",
+          props.onClick ? "cursor-pointer hover:border-slate-400 hover:bg-white" : "",
         ].join(" ")}
         onClick={props.onClick}
         onMouseEnter={props.onMouseEnter}
@@ -914,7 +914,7 @@ function TreeNodeCard(props: TreeCard) {
         {props.onAdvance ? (
           <button
             type="button"
-            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 transition hover:bg-slate-100"
+            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-600 transition hover:border-slate-400 hover:bg-slate-50"
             onClick={(event) => {
               event.stopPropagation();
               props.onAdvance?.();
@@ -934,7 +934,7 @@ function CanvasControlButton(props: { children: ReactNode; onClick: () => void }
     <button
       type="button"
       onClick={props.onClick}
-      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white/92 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-sm font-medium text-slate-800 shadow-[0_10px_24px_-18px_rgba(4,12,27,0.18)] transition hover:border-slate-400 hover:bg-slate-50"
     >
       {props.children}
     </button>
@@ -954,7 +954,7 @@ function GraphFilterChip(props: {
         "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition",
         props.active
           ? "border-slate-950 bg-slate-950 text-white"
-          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300",
+          : "border-slate-300 bg-white text-slate-800 hover:border-slate-400",
       ].join(" ")}
       onClick={props.onClick}
     >
@@ -966,7 +966,7 @@ function GraphFilterChip(props: {
 
 function StatBadge(props: { icon: ReactNode; label: string }) {
   return (
-    <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600">
+    <span className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 shadow-[0_8px_20px_-18px_rgba(4,12,27,0.14)]">
       {props.icon}
       {props.label}
     </span>

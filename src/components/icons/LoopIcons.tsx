@@ -6,7 +6,18 @@ export function LoopMark(props: IconProps) {
   return (
     <svg viewBox="0 0 32 32" fill="none" aria-hidden="true" {...props}>
       <circle cx="16" cy="16" r="16" fill="currentColor" />
-      <path d="M16 7.5 23.25 20H8.75L16 7.5Z" fill="white" />
+      <text
+        x="16"
+        y="16"
+        dominantBaseline="central"
+        fill="white"
+        fontFamily="'Segoe UI Symbol','Apple Symbols','Noto Sans Symbols 2','Arial Unicode MS',sans-serif"
+        fontSize="20"
+        fontWeight="700"
+        textAnchor="middle"
+      >
+        ♠
+      </text>
     </svg>
   );
 }
