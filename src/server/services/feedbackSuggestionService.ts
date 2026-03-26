@@ -227,22 +227,89 @@ function applySuggestionToText(
   suggestedText: string,
   mode: "replace" | "append",
 ) {
-  const original = originalText.trim();
-  const suggested = suggestedText.trim();
+  const currentText = normalizeSuggestionText(current);
+  const original = normalizeSuggestionText(originalText);
+  const suggested = normalizeSuggestionText(suggestedText);
   if (!suggested) return current;
 
-  if (mode === "replace" && original && current.includes(original)) {
-    return current.replace(original, suggested);
+  if (mode === "replace" && original && currentText.includes(original)) {
+    return currentText.replace(original, suggested);
   }
 
-  const section = [
-    "#### Accepted suggestion",
-    original ? `~~${original}~~` : null,
-    suggested,
-  ]
-    .filter(Boolean)
-    .join("\n\n");
+  if (mode === "replace" && original) {
+    const paragraphs = currentText
+      .split(/\n{2,}/)
+      .map((paragraph) => paragraph.trim())
+      .filter(Boolean);
 
-  if (!current.trim()) return section;
-  return `${current.trimEnd()}\n\n${section}`;
+    if (paragraphs.length === 1) {
+      return suggested;
+    }
+
+    const matchIndex = findBestParagraphMatch(paragraphs, original);
+    if (matchIndex >= 0) {
+      const next = [...paragraphs];
+      next[matchIndex] = suggested;
+      return next.join("\n\n");
+    }
+
+    if (currentText.length <= Math.max(420, original.length * 2)) {
+      return suggested;
+    }
+  }
+
+  if (!currentText.trim()) return suggested;
+  if (currentText.includes(suggested)) return currentText;
+  return `${currentText.trimEnd()}\n\n${suggested}`;
+}
+
+function normalizeSuggestionText(value: string) {
+  return value
+    .replace(/\r\n/g, "\n")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^>\s?/gm, "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/__(.*?)__/g, "$1")
+    .replace(/\*(.*?)\*/g, "$1")
+    .replace(/_(.*?)_/g, "$1")
+    .replace(/~~(.*?)~~/g, "$1")
+    .replace(/`([^`]*)`/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/^\s*[-*+]\s+/gm, "• ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function findBestParagraphMatch(paragraphs: string[], original: string) {
+  const originalWords = wordSet(original);
+  let bestIndex = -1;
+  let bestScore = 0;
+
+  paragraphs.forEach((paragraph, index) => {
+    const paragraphWords = wordSet(paragraph);
+    if (paragraphWords.size === 0 || originalWords.size === 0) return;
+
+    let overlap = 0;
+    for (const word of originalWords) {
+      if (paragraphWords.has(word)) overlap += 1;
+    }
+
+    const score = overlap / Math.max(1, originalWords.size);
+    if (score > bestScore) {
+      bestScore = score;
+      bestIndex = index;
+    }
+  });
+
+  return bestScore >= 0.32 ? bestIndex : -1;
+}
+
+function wordSet(value: string) {
+  return new Set(
+    value
+      .toLowerCase()
+      .split(/[^a-z0-9]+/i)
+      .map((word) => word.trim())
+      .filter((word) => word.length >= 3),
+  );
 }

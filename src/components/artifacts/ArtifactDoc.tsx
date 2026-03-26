@@ -8,7 +8,6 @@ import { Button } from "@/src/components/Button";
 import {
   BlockEditor,
   type BlockDto,
-  type BlockSuggestionPreview,
 } from "@/src/components/blocks/BlockEditor";
 import { Input } from "@/src/components/Input";
 import {
@@ -391,16 +390,8 @@ export function ArtifactDoc(props: {
         </div>
       ) : null}
 
-      <div className="rounded-[28px] border border-white/70 bg-white/70 px-4 py-3 backdrop-blur-2xl">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/70 px-2 pb-3">
-          <div className="min-w-0">
-            <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-slate-400">
-              Document
-            </div>
-            <div className="mt-1 text-sm text-slate-500">
-              Insert blocks from the gutter or keep moving with quick actions.
-            </div>
-          </div>
+      <div className="rounded-[28px] border border-slate-200 bg-white px-4 py-4 shadow-[0_18px_48px_-40px_rgba(15,23,42,0.18)]">
+        <div className="flex flex-wrap items-center justify-end gap-2 border-b border-slate-200 px-2 pb-3">
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <div className="relative">
               <button
@@ -464,8 +455,8 @@ export function ArtifactDoc(props: {
           />
 
           {blocks.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-white/70 bg-white/45 p-4 text-sm text-muted">
-              Start with a first block, then use hidden plus gutters to keep ideas and questions flowing.
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">
+              Start with a block.
             </div>
           ) : null}
 
@@ -483,11 +474,8 @@ export function ArtifactDoc(props: {
                 busy={interactionBusy}
                 autoEdit={autoEditBlockId === block.id}
                 onAutoEditConsumed={() => setAutoEditBlockId(null)}
-                onOpenAdd={() => setAddMenuFor(block.id)}
+                onOpenAdd={() => setAddMenuFor(`insert-${block.id}`)}
                 onOpenAsk={() => openAsk(block.id)}
-                addMenuOpen={addMenuFor === block.id}
-                addMenuRef={addMenuRef}
-                onAddBlock={(type) => addBlock({ afterBlockId: block.id, type })}
                 justAdded={lastAddedId === block.id}
                 dragging={draggingBlockId === block.id}
                 dropActive={dropTargetBlockId === block.id}
@@ -523,7 +511,7 @@ export function ArtifactDoc(props: {
           {blocks.length > 1 ? (
             <div
               className={[
-                "rounded-xl border border-dashed border-white/65 bg-white/45 px-4 py-3 text-center text-xs text-muted transition",
+                "rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-center text-xs text-slate-500 transition",
                 draggingBlockId ? "opacity-100" : "opacity-65",
               ].join(" ")}
               onDragOver={(event) => {
@@ -571,9 +559,6 @@ function BlockRow(props: {
   onAutoEditConsumed: () => void;
   onOpenAdd: () => void;
   onOpenAsk: () => void;
-  addMenuOpen: boolean;
-  addMenuRef: RefObject<HTMLDivElement | null>;
-  onAddBlock: (type: string) => void;
   justAdded?: boolean;
   dragging: boolean;
   dropActive: boolean;
@@ -592,7 +577,6 @@ function BlockRow(props: {
 }) {
   const rowRef = useRef<HTMLDivElement | null>(null);
   const { autoEdit, onAutoEditConsumed } = props;
-  const suggestionPreview = useMemo(() => selectSuggestionPreview(props.suggestions), [props.suggestions]);
 
   useEffect(() => {
     if (!autoEdit) return;
@@ -604,10 +588,9 @@ function BlockRow(props: {
     <div
       ref={rowRef}
       className={[
-        "doc-block-shell doc-block-reveal group relative flex gap-3 rounded-2xl border border-white/70 bg-white/50 p-4 backdrop-blur-xl overflow-visible",
-        props.addMenuOpen ? "z-[120]" : "z-0",
+        "doc-block-shell doc-block-reveal group relative flex gap-3 rounded-[22px] border border-transparent bg-transparent px-2 py-4 overflow-visible",
         props.dropActive ? "ring-2 ring-sky-200" : "",
-        props.highlighted ? "ring-2 ring-fuchsia-200 bg-fuchsia-50/50" : "",
+        props.highlighted ? "ring-2 ring-fuchsia-200 bg-fuchsia-50/40" : "",
         props.dragging ? "opacity-60" : "",
         props.justAdded ? "guide-ring" : "",
       ].join(" ")}
@@ -632,12 +615,12 @@ function BlockRow(props: {
         </span>
       ) : null}
       <div className="relative w-12 shrink-0 pt-1">
-        <div className="pointer-events-none absolute left-4 top-2 h-[calc(100%-12px)] w-px bg-white/70 opacity-70" />
+        <div className="pointer-events-none absolute left-4 top-2 h-[calc(100%-12px)] w-px bg-slate-200 opacity-90" />
         <button
           type="button"
           disabled={props.busy}
           draggable={false}
-          className="block-side-action absolute left-0 top-0 grid h-8 w-8 place-items-center rounded-full border border-white/70 bg-white/70 text-[11px] text-slate-700 opacity-0 shadow-sm transition hover:bg-white/95 group-hover:opacity-100 disabled:opacity-50"
+          className="block-side-action absolute left-0 top-0 grid h-8 w-8 place-items-center rounded-full border border-slate-200 bg-white text-[11px] text-slate-700 opacity-0 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 group-hover:opacity-100 disabled:opacity-50"
           aria-label="Drag block"
           title="Drag block"
         >
@@ -647,7 +630,7 @@ function BlockRow(props: {
           type="button"
           disabled={props.busy}
           onClick={props.onOpenAdd}
-          className="block-side-action absolute left-0 top-9 grid h-8 w-8 place-items-center rounded-full border border-white/70 bg-white/70 text-sm text-slate-700 opacity-0 shadow-sm transition hover:bg-white/95 group-hover:opacity-100 disabled:opacity-50"
+          className="block-side-action absolute left-0 top-9 grid h-8 w-8 place-items-center rounded-full border border-slate-200 bg-white text-sm text-slate-700 opacity-0 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 group-hover:opacity-100 disabled:opacity-50"
           aria-label="Add block"
           title="Add block"
         >
@@ -657,25 +640,19 @@ function BlockRow(props: {
           type="button"
           disabled={props.busy}
           onClick={props.onOpenAsk}
-          className="block-side-action absolute left-0 top-[72px] grid h-8 w-8 place-items-center rounded-full border border-white/70 bg-white/70 text-sm text-slate-700 opacity-0 shadow-sm transition hover:bg-white/95 group-hover:opacity-100 disabled:opacity-50"
+          className="block-side-action absolute left-0 top-[72px] grid h-8 w-8 place-items-center rounded-full border border-slate-200 bg-white text-sm text-slate-700 opacity-0 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 group-hover:opacity-100 disabled:opacity-50"
           aria-label="Request input"
           title="Request input"
         >
           ?
         </button>
-
-        {props.addMenuOpen ? (
-          <div ref={props.addMenuRef} className="absolute left-10 top-1 z-[200] w-[320px]">
-            <BlockTypeMenu onSelect={(type) => props.onAddBlock(type)} />
-          </div>
-        ) : null}
       </div>
 
-      <div className="min-w-0 flex-1">
-        <div className="mb-2 flex items-center justify-end gap-1">
+      <div className="relative min-w-0 flex-1">
+        <div className="pointer-events-none absolute -top-3 right-0 z-10 flex items-center gap-1 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
           <button
             type="button"
-            className="rounded-full border border-white/70 bg-white/70 px-2 py-0.5 text-[11px] text-slate-700 hover:bg-white/95 disabled:opacity-40"
+            className="pointer-events-auto rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-700 hover:border-slate-300 hover:bg-slate-50 disabled:opacity-40"
             onClick={props.onMoveUp}
             disabled={props.busy || !props.canMoveUp}
             title="Move up"
@@ -685,7 +662,7 @@ function BlockRow(props: {
           </button>
           <button
             type="button"
-            className="rounded-full border border-white/70 bg-white/70 px-2 py-0.5 text-[11px] text-slate-700 hover:bg-white/95 disabled:opacity-40"
+            className="pointer-events-auto rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-700 hover:border-slate-300 hover:bg-slate-50 disabled:opacity-40"
             onClick={props.onMoveDown}
             disabled={props.busy || !props.canMoveDown}
             title="Move down"
@@ -694,13 +671,12 @@ function BlockRow(props: {
             ↓
           </button>
         </div>
-        <div className={props.suggestions.length > 0 ? "grid gap-5 xl:grid-cols-[minmax(0,1fr)_17rem]" : undefined}>
+        <div className={props.suggestions.length > 0 ? "grid gap-5 pt-1 xl:grid-cols-[minmax(0,1fr)_17rem]" : "pt-1"}>
           <div className="min-w-0">
             <BlockEditor
               artifactId={props.artifactId}
               block={props.block}
               autoEdit={props.autoEdit}
-              suggestionPreview={suggestionPreview}
             />
           </div>
 
@@ -780,19 +756,6 @@ function SuggestionCommentCard(props: {
       </div>
     </div>
   );
-}
-
-function selectSuggestionPreview(suggestions: SuggestionDto[]): BlockSuggestionPreview | null {
-  const editSuggestion = suggestions.find(
-    (suggestion) =>
-      suggestion.payload?.kind === "suggestion" && Boolean(suggestion.payload.suggestedText.trim()),
-  );
-  if (!editSuggestion?.payload) return null;
-  return {
-    originalText: editSuggestion.payload.originalText,
-    suggestedText: editSuggestion.payload.suggestedText,
-    applyMode: editSuggestion.payload.applyMode,
-  };
 }
 
 function InsertRail(props: {

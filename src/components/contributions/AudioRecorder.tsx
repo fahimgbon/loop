@@ -32,6 +32,24 @@ export function AudioRecorder(props: {
     return () => clearInterval(interval);
   }, [recording]);
 
+  useEffect(() => {
+    const onStart = (event: Event) => {
+      const detail = (event as CustomEvent<{
+        workspaceSlug?: string;
+        artifactId?: string | null;
+        blockId?: string | null;
+      }>).detail;
+      if (detail?.workspaceSlug && detail.workspaceSlug !== props.workspaceSlug) return;
+      if ((detail?.artifactId ?? null) !== (props.artifactId ?? null)) return;
+      if ((detail?.blockId ?? null) !== (props.blockId ?? null)) return;
+      if (recording || uploading) return;
+      void start();
+    };
+
+    window.addEventListener("aceync:start-audio-recording", onStart as EventListener);
+    return () => window.removeEventListener("aceync:start-audio-recording", onStart as EventListener);
+  }, [props.workspaceSlug, props.artifactId, props.blockId, recording, uploading]);
+
   async function start() {
     setPermissionError(null);
     setLastContributionId(null);

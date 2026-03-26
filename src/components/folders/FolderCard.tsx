@@ -83,7 +83,6 @@ export function FolderCard(props: {
   const visual = inferFolderVisual(props.name);
   const Icon = visual.icon;
   const label = props.label ?? visual.label;
-  const visibleChips = props.chips?.slice(0, 2) ?? [];
 
   return (
     <div
@@ -135,17 +134,8 @@ export function FolderCard(props: {
           {props.lead}
         </div>
       ) : null}
-      {visibleChips.length > 0 ? (
-        <div className="mt-3 flex min-h-[32px] flex-wrap content-start gap-2">
-          {visibleChips.map((chip) => (
-            <span key={chip} className="folder-pill">
-              {chip}
-            </span>
-          ))}
-        </div>
-      ) : null}
       <div className="mt-auto flex items-center justify-between pt-3 text-[11px] text-slate-600">
-        <span className="folder-pill">{props.kind === "smart" ? `${label} cluster` : label}</span>
+        <span className="folder-pill">{label}</span>
         {props.meta ? <span className="shrink-0 whitespace-nowrap">{props.meta}</span> : <span />}
       </div>
     </div>

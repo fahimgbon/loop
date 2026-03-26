@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/src/components/Button";
+import { CaptureRecorder } from "@/src/components/capture/CaptureRecorder";
 import {
   ArrowUpRightIcon,
+  CaptureIcon,
   FolderIcon,
   NewDocIcon,
   SearchIcon,
@@ -112,7 +114,7 @@ export function SearchWorkspaceClient(props: {
   const [selectedFolderKey, setSelectedFolderKey] = useState("all");
   const [selectedFacetKey, setSelectedFacetKey] = useState<string | null>(null);
   const [queryView, setQueryView] = useState<SearchView>("answer");
-  const [composer, setComposer] = useState<"folder" | "artifact" | null>(null);
+  const [composer, setComposer] = useState<"folder" | "artifact" | "record" | null>(null);
   const [folderName, setFolderName] = useState("");
   const [folderTemplateSlug, setFolderTemplateSlug] = useState("prd");
   const [artifactTitle, setArtifactTitle] = useState("");
@@ -281,6 +283,11 @@ export function SearchWorkspaceClient(props: {
     setArtifactTargetKey(selectedFolder?.key ?? artifactTargetOptions[0]?.key ?? "smart:prd");
   }
 
+  function openRecordComposer() {
+    setComposer("record");
+    setCreateError(null);
+  }
+
   async function createFolder(event: React.FormEvent) {
     event.preventDefault();
     const name = folderName.trim();
@@ -369,6 +376,10 @@ export function SearchWorkspaceClient(props: {
               />
             </div>
             <div className="flex items-center gap-2">
+              <Button type="button" variant="secondary" onClick={openRecordComposer}>
+                <CaptureIcon className="h-4 w-4" />
+                Record artifact
+              </Button>
               <Button type="button" variant="secondary" onClick={openFolderComposer}>
                 <FolderIcon className="h-4 w-4" />
                 New folder
@@ -399,10 +410,16 @@ export function SearchWorkspaceClient(props: {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-700">
-                  {composer === "folder" ? "Create folder" : "Create artifact"}
+                  {composer === "folder"
+                    ? "Create folder"
+                    : composer === "artifact"
+                      ? "Create artifact"
+                      : "Record artifact"}
                 </div>
                 <div className="mt-1 text-sm leading-6 text-slate-700">
-                  {composer === "folder"
+                  {composer === "record"
+                    ? "Start speaking here, then continue in Capture as the transcript and structure come together."
+                    : composer === "folder"
                     ? selectedFolder?.kind === "smart"
                       ? `This will use the inferred block structure from ${selectedFolder.name}.`
                       : "Create a new folder without leaving Search."
@@ -423,7 +440,16 @@ export function SearchWorkspaceClient(props: {
               </button>
             </div>
 
-            {composer === "folder" ? (
+            {composer === "record" ? (
+              <div className="mt-4 rounded-[24px] border border-slate-200 bg-slate-50/70 px-4 py-5">
+                <CaptureRecorder
+                  workspaceSlug={workspaceSlug}
+                  onUploaded={(contributionId) => {
+                    router.push(`/w/${workspaceSlug}/capture?contributionId=${contributionId}`);
+                  }}
+                />
+              </div>
+            ) : composer === "folder" ? (
               <form className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto]" onSubmit={createFolder}>
                 <label className="grid gap-1 text-sm">
                   <span className="text-slate-700">Folder name</span>

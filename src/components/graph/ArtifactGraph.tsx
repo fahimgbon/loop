@@ -9,10 +9,7 @@ import { Input } from "@/src/components/Input";
 import {
   ArrowUpRightIcon,
   ChevronRightIcon,
-  FolderIcon,
   GraphIcon,
-  LinkNodesIcon,
-  SparkIcon,
 } from "@/src/components/icons/LoopIcons";
 import type {
   ArtifactGraphCollection,
@@ -72,7 +69,7 @@ export function ArtifactGraph(props: {
   );
 
   const [selectedCollectionKey, setSelectedCollectionKey] = useState<string>(() =>
-    isOverview ? collections[0]?.key ?? "all" : "all",
+    collections[0]?.key ?? "all",
   );
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [hoveredCollectionKey, setHoveredCollectionKey] = useState<string | null>(null);
@@ -210,7 +207,7 @@ export function ArtifactGraph(props: {
 
   const branchNeighbors = fullRootNode
     ? listNeighbors(adjacencyMap, fullRootNode.id, {
-        limit: 6,
+        limit: 5,
       })
     : [];
 
@@ -218,7 +215,7 @@ export function ArtifactGraph(props: {
     activeCollection
       ? (nodesByCollection.get(activeCollection.key) ?? [])
           .filter((node) => node.id !== fullRootNode?.id)
-          .slice(0, 6)
+          .slice(0, 5)
           .map((node) => ({
             node,
             reason: node.blockThemes[0] ?? "Artifact",
@@ -239,7 +236,7 @@ export function ArtifactGraph(props: {
   const tertiaryNeighbors =
     expandedBranchNode && fullRootNode
       ? listNeighbors(adjacencyMap, expandedBranchNode.id, {
-          limit: 4,
+          limit: 3,
           excludeIds: [fullRootNode.id],
         })
       : [];
@@ -327,20 +324,16 @@ export function ArtifactGraph(props: {
             <GraphIcon className="h-4 w-4" />
             {props.title ?? "Network"}
           </div>
-          <h2
-            className={[
-              "mt-1 font-semibold tracking-[-0.04em] text-slate-950",
-              isOverview ? "text-[20px]" : "text-[26px]",
-            ].join(" ")}
-          >
-            {isOverview ? "A high-level map of the workspace" : "Explore the workspace as a living network"}
-          </h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            {props.subtitle ??
-              (isOverview
-                ? "Hover to trace a path. Click to follow it."
-                : "Hover to trace links. Click deeper and the focal point follows you." )}
-          </p>
+          {isOverview ? (
+            <>
+              <h2 className="mt-1 text-[20px] font-semibold tracking-[-0.04em] text-slate-950">
+                A high-level map of the workspace
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+                {props.subtitle || "Hover to trace a path. Click to follow it."}
+              </p>
+            </>
+          ) : null}
         </div>
 
         {isOverview ? (
@@ -355,13 +348,17 @@ export function ArtifactGraph(props: {
               <ArrowUpRightIcon className="h-4 w-4" />
             </button>
           </div>
-        ) : null}
+        ) : (
+          <div className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-[0_10px_24px_-22px_rgba(4,12,27,0.18)]">
+            {visibleNodes.length} docs
+          </div>
+        )}
       </div>
 
       {!isOverview ? (
         <>
-          <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
-            <div className="relative">
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <div className="relative min-w-[280px] flex-1 max-w-[520px]">
               <Input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
@@ -388,14 +385,9 @@ export function ArtifactGraph(props: {
                 </div>
               ) : null}
             </div>
-            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-              <StatBadge icon={<FolderIcon className="h-4 w-4" />} label={`${visibleCollections.length} groups`} />
-              <StatBadge icon={<SparkIcon className="h-4 w-4" />} label={`${visibleNodes.length} docs`} />
-              <StatBadge icon={<LinkNodesIcon className="h-4 w-4" />} label={`${visibleEdges.length} links`} />
-            </div>
           </div>
 
-          <div className="mt-4 overflow-x-auto pb-1">
+          <div className="mt-3 overflow-x-auto pb-1">
             <div className="flex min-w-max gap-2">
               <GraphFilterChip
                 label="All"
@@ -645,37 +637,37 @@ function FullTree(props: {
   onNodeHover: (nodeId: string | null) => void;
   onNodeLeave: () => void;
 }) {
-  const width = 1460;
+  const width = 1480;
   const height = 760;
-  const collectionY = 94;
+  const collectionY = 76;
   const rootX = width / 2;
-  const rootY = 242;
+  const rootY = 194;
   const branchPositions = layoutTier({
     count: props.branchNodes.length,
     centerX: rootX,
-    width: 220,
-    minX: 156,
-    maxX: width - 156,
-    maxPerRow: 4,
-    baseY: 428,
-    rowGap: 96,
+    width: 196,
+    minX: 160,
+    maxX: width - 160,
+    maxPerRow: 2,
+    baseY: 336,
+    rowGap: 100,
   });
   const expandedBranchIndex =
     props.expandedBranchNodeId
       ? props.branchNodes.findIndex((item) => item.node.id === props.expandedBranchNodeId)
       : -1;
   const activeBranchPoint = expandedBranchIndex >= 0 ? branchPositions[expandedBranchIndex] : null;
-  const branchBottom = branchPositions.reduce((max, point) => Math.max(max, point.y), 428);
-  const tertiaryBaseY = Math.min(666, branchBottom + 124);
+  const branchBottom = branchPositions.reduce((max, point) => Math.max(max, point.y), 374);
+  const tertiaryBaseY = Math.min(700, branchBottom + 148);
   const tertiaryPositions = layoutTier({
     count: props.tertiaryNodes.length,
     centerX: activeBranchPoint?.x ?? rootX,
-    width: 204,
-    minX: 152,
-    maxX: width - 152,
-    maxPerRow: 4,
+    width: 184,
+    minX: 160,
+    maxX: width - 160,
+    maxPerRow: 2,
     baseY: tertiaryBaseY,
-    rowGap: 84,
+    rowGap: 96,
   });
 
   return (
@@ -683,44 +675,22 @@ function FullTree(props: {
       <div className="network-canvas overflow-hidden rounded-[30px] border border-slate-300">
         <div className="network-canvas-grid" />
         <div className="relative h-[760px]">
-          <div className="glass absolute left-6 top-6 z-20 flex max-w-[280px] items-center gap-3 rounded-full border border-slate-300 bg-white/86 px-3 py-2.5 text-slate-900 shadow-[0_20px_50px_-38px_rgba(4,12,27,0.16)]">
-            <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Focus
-            </span>
-            <div className="min-w-0">
-              <div className="truncate text-sm font-medium text-slate-950">
-                {props.rootNode?.title ?? props.activeCollection?.name ?? "Network"}
-              </div>
-              <div className="truncate text-xs text-slate-500">
-                {props.rootNode
-                  ? `${props.rootNode.collectionName} · ${props.branchNodes.length} direct links`
-                  : props.activeCollection
-                    ? `${props.activeCollection.artifactCount} docs in view`
-                    : "Select a node to inspect it."}
-              </div>
-            </div>
-            {props.rootNode ? (
-              <Link
-                href={`/w/${props.workspaceSlug}/artifacts/${props.rootNode.id}`}
-                className="inline-flex h-8 shrink-0 items-center rounded-full border border-slate-300 bg-white px-3 text-xs font-medium text-slate-800 transition hover:border-slate-400 hover:bg-slate-50"
-              >
-                Open
-              </Link>
+          <div className="absolute left-6 top-6 z-20 flex flex-wrap items-center gap-2">
+            {props.activeCollection ? (
+              <span className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 shadow-[0_10px_24px_-18px_rgba(4,12,27,0.14)]">
+                {props.activeCollection.name}
+              </span>
             ) : null}
           </div>
 
-          <div className="absolute left-6 top-[82px] z-20 flex flex-wrap gap-2">
-            {props.activeCollection ? (
-              <span className="rounded-full border border-slate-300 bg-white/94 px-3 py-1.5 text-xs font-medium text-slate-800">
-                {describeCollection(props.activeCollection)}
-              </span>
-            ) : null}
-            {props.activeCollection?.kind === "smart" ? (
-              <span className="rounded-full border border-dashed border-slate-300 bg-white/92 px-3 py-1.5 text-xs text-slate-600">
-                Suggested cluster
-              </span>
-            ) : null}
-          </div>
+          {props.rootNode ? (
+            <Link
+              href={`/w/${props.workspaceSlug}/artifacts/${props.rootNode.id}`}
+              className="absolute right-6 top-6 z-20 inline-flex h-8 shrink-0 items-center rounded-full border border-slate-300 bg-white px-3 text-xs font-medium text-slate-800 transition hover:border-slate-400 hover:bg-slate-50"
+            >
+              Open
+            </Link>
+          ) : null}
 
           <div className="absolute bottom-6 right-6 z-20 flex flex-col gap-2">
             <CanvasControlButton onClick={props.onZoomOut}>-</CanvasControlButton>
@@ -732,10 +702,6 @@ function FullTree(props: {
               {Math.round(props.scale * 100)}%
             </button>
             <CanvasControlButton onClick={props.onZoomIn}>+</CanvasControlButton>
-          </div>
-
-          <div className="absolute right-6 top-6 z-20 rounded-full border border-slate-300 bg-white/94 px-3 py-2 text-[11px] text-slate-600 shadow-[0_10px_24px_-18px_rgba(4,12,27,0.14)]">
-            Hover to trace. Click to shift.
           </div>
 
           <div
@@ -813,7 +779,7 @@ function FullTree(props: {
                   tone="root"
                   x={rootX}
                   y={rootY}
-                  width={278}
+                  width={264}
                   canvasWidth={width}
                   canvasHeight={height}
                   active
@@ -830,7 +796,7 @@ function FullTree(props: {
                   tone="artifact"
                   x={branchPositions[index]?.x ?? rootX}
                   y={branchPositions[index]?.y ?? 428}
-                  width={218}
+                  width={208}
                   canvasWidth={width}
                   canvasHeight={height}
                   active={props.expandedBranchNodeId === item.node.id}
@@ -855,7 +821,7 @@ function FullTree(props: {
                   tone="accent"
                   x={tertiaryPositions[index]?.x ?? rootX}
                   y={tertiaryPositions[index]?.y ?? tertiaryBaseY}
-                  width={198}
+                  width={190}
                   canvasWidth={width}
                   canvasHeight={height}
                   compact
@@ -894,7 +860,7 @@ function TreeNodeCard(props: TreeCard) {
     >
       <div
         className={[
-          "group flex items-center justify-between gap-3 rounded-[18px] border px-4 py-3 backdrop-blur-sm transition duration-300",
+          "group flex items-center justify-between gap-3 rounded-[18px] border px-4 py-3 transition duration-300",
           toneClasses[props.tone],
           props.active ? "ring-2 ring-[rgba(52,101,255,0.24)]" : "",
           props.dotted ? "border-dashed" : "",
@@ -964,15 +930,6 @@ function GraphFilterChip(props: {
   );
 }
 
-function StatBadge(props: { icon: ReactNode; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 shadow-[0_8px_20px_-18px_rgba(4,12,27,0.14)]">
-      {props.icon}
-      {props.label}
-    </span>
-  );
-}
-
 function listNeighbors(
   adjacencyMap: Map<string, Neighbor[]>,
   nodeId: string,
@@ -992,11 +949,13 @@ function spreadXPositions(
   maxX: number,
 ) {
   if (count <= 0) return [];
-  const totalWidth = (count - 1) * gap;
+  const availableWidth = Math.max(0, maxX - minX);
+  const adjustedGap = count > 1 ? Math.min(gap, availableWidth / (count - 1)) : gap;
+  const totalWidth = (count - 1) * adjustedGap;
   let start = centerX - totalWidth / 2;
   if (start < minX) start = minX;
   if (start + totalWidth > maxX) start = maxX - totalWidth;
-  return Array.from({ length: count }, (_, index) => start + index * gap);
+  return Array.from({ length: count }, (_, index) => start + index * adjustedGap);
 }
 
 function describeCollection(collection: ArtifactGraphCollection) {
@@ -1032,7 +991,7 @@ function layoutTier(input: {
   for (let rowIndex = 0; rowIndex < rows; rowIndex += 1) {
     const startIndex = rowIndex * input.maxPerRow;
     const rowCount = Math.min(input.maxPerRow, input.count - startIndex);
-    const rowGap = input.width + 26;
+    const rowGap = input.width + 44;
     const xs = spreadXPositions(rowCount, input.centerX, rowGap, input.minX, input.maxX);
 
     for (let index = 0; index < rowCount; index += 1) {

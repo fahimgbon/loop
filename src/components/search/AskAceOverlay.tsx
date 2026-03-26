@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { CaptureRecorder } from "@/src/components/capture/CaptureRecorder";
 import {
   ArrowUpRightIcon,
+  CaptureIcon,
   FolderIcon,
   InboxIcon,
   SearchIcon,
@@ -49,8 +51,10 @@ type OverlayBrief = {
 
 export function AskAceOverlay(props: { workspaceSlug: string | null }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
+  const [recordingOpen, setRecordingOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SearchResult | null>(null);
@@ -82,6 +86,7 @@ export function AskAceOverlay(props: { workspaceSlug: string | null }) {
 
   useEffect(() => {
     setOpen(false);
+    setRecordingOpen(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -140,6 +145,7 @@ export function AskAceOverlay(props: { workspaceSlug: string | null }) {
     setOpen(false);
     setQ("");
     setError(null);
+    setRecordingOpen(false);
   }
 
   if (!props.workspaceSlug) return null;
@@ -170,6 +176,14 @@ export function AskAceOverlay(props: { workspaceSlug: string | null }) {
                 placeholder="Ask Ace"
                 className="w-full min-w-0 bg-transparent text-[15px] text-slate-950 outline-none placeholder:text-slate-500"
               />
+              <button
+                type="button"
+                className="inline-flex shrink-0 items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-900 hover:bg-slate-50"
+                onClick={() => setRecordingOpen((current) => !current)}
+              >
+                <CaptureIcon className="h-4 w-4" />
+                {recordingOpen ? "Hide recorder" : "Record artifact"}
+              </button>
               <Link
                 href={`/w/${props.workspaceSlug}/search${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ""}`}
                 className="inline-flex shrink-0 items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-900 hover:bg-slate-50"
@@ -192,6 +206,18 @@ export function AskAceOverlay(props: { workspaceSlug: string | null }) {
                 </button>
               ))}
             </div>
+
+            {recordingOpen ? (
+              <div className="mt-4 rounded-[24px] border border-slate-200 bg-slate-50/80 px-4 py-5">
+                <CaptureRecorder
+                  workspaceSlug={props.workspaceSlug}
+                  onUploaded={(contributionId) => {
+                    closeOverlay();
+                    router.push(`/w/${props.workspaceSlug}/capture?contributionId=${contributionId}`);
+                  }}
+                />
+              </div>
+            ) : null}
           </div>
 
           <div className="max-h-[min(72vh,720px)] overflow-y-auto bg-white px-5 py-5">

@@ -1,11 +1,13 @@
 "use client";
 
+import Image, { type StaticImageData } from "next/image";
 import type { ReactNode } from "react";
 
 type Person = {
   id?: string;
   name: string;
   email?: string | null;
+  avatarSrc?: string | StaticImageData | null;
 };
 
 export function AvatarStack(props: {
@@ -29,7 +31,17 @@ export function AvatarStack(props: {
           overlapClass={index === 0 ? "" : "-ml-2.5"}
           onClick={props.onPersonClick}
         >
-          {getInitials(person.name || person.email || "Aceync")}
+          {person.avatarSrc ? (
+            <Image
+              src={person.avatarSrc}
+              alt={person.name}
+              fill
+              sizes={props.size === "sm" ? "32px" : "36px"}
+              className="object-cover"
+            />
+          ) : (
+            getInitials(person.name || person.email || "Aceync")
+          )}
         </AvatarBubble>
       ))}
       {overflow > 0 ? (
@@ -56,7 +68,7 @@ function AvatarBubble(props: {
   onClick?: (person: Person) => void;
 }) {
   const className = [
-    "inline-flex shrink-0 items-center justify-center rounded-full border-2 border-white font-semibold text-slate-900 shadow-sm transition",
+    "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-white font-semibold text-slate-900 shadow-sm transition",
     props.sizeClass,
     props.overlapClass,
     props.onClick ? "cursor-pointer hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400" : "",

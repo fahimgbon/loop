@@ -164,11 +164,11 @@ export function ArtifactWorkspace(props: {
       <div
         className={[
           "relative grid gap-4 xl:items-start",
-          sidebarCollapsed ? "xl:grid-cols-[minmax(0,1fr)]" : "xl:grid-cols-[minmax(0,1fr)_340px]",
+          sidebarCollapsed ? "xl:grid-cols-[minmax(0,1fr)]" : "xl:grid-cols-[minmax(0,1fr)_360px]",
         ].join(" ")}
       >
         <section className="min-w-0">
-          <div className="glass-strong rounded-[30px] border border-slate-300 bg-white/88 shadow-[0_28px_90px_-58px_rgba(4,12,27,0.18)]">
+          <div className="rounded-[30px] border border-slate-300 bg-white shadow-[0_24px_72px_-54px_rgba(15,23,42,0.2)]">
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-300 px-5 py-4 lg:px-7">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-slate-500">
@@ -211,7 +211,19 @@ export function ArtifactWorkspace(props: {
                 <button
                   type="button"
                   className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3.5 py-2 text-xs font-medium text-slate-800 shadow-[0_8px_22px_-18px_rgba(4,12,27,0.2)] hover:border-slate-400 hover:bg-slate-50"
-                  onClick={() => openSidebarSection("capture")}
+                  onClick={() => {
+                    openSidebarSection("capture");
+                    window.setTimeout(() => {
+                      window.dispatchEvent(
+                        new CustomEvent("aceync:start-audio-recording", {
+                          detail: {
+                            workspaceSlug: props.workspaceSlug,
+                            artifactId: props.artifactId,
+                          },
+                        }),
+                      );
+                    }, 40);
+                  }}
                 >
                   <CaptureIcon className="h-4 w-4" />
                   Capture
@@ -263,15 +275,12 @@ export function ArtifactWorkspace(props: {
 
         {!sidebarCollapsed ? (
           <aside className="min-w-0 xl:sticky xl:top-5 xl:max-h-[calc(100vh-1.5rem)] xl:overflow-hidden">
-            <div className="glass h-full overflow-hidden rounded-[28px] border border-slate-300 bg-white/88 p-3">
+            <div className="h-full overflow-hidden rounded-[28px] border border-slate-300 bg-white p-3 shadow-[0_20px_52px_-44px_rgba(15,23,42,0.22)]">
               <div className="flex items-center justify-between gap-3 px-2 pb-4">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                     <SparkIcon className="h-4 w-4" />
                     Properties
-                  </div>
-                  <div className="mt-1 text-sm leading-6 text-slate-600">
-                    Collapse sections you are not using so the document stays central.
                   </div>
                 </div>
               </div>
@@ -280,7 +289,7 @@ export function ArtifactWorkspace(props: {
                 <SidebarSection
                   id="capture-panel"
                   title="Capture"
-                  note="Record or upload an update directly into this artifact."
+                  note="Record into this doc."
                   icon={<CaptureIcon className="h-4 w-4" />}
                   open={sections.capture}
                   onToggle={() => toggleSection("capture")}
@@ -291,7 +300,7 @@ export function ArtifactWorkspace(props: {
                 <SidebarSection
                   id="feedback-panel"
                   title="Collaboration prompts"
-                  note="Turn ambiguity into clear asks so multiple teammates can shape the artifact in parallel."
+                  note="Ask for focused input."
                   icon={<CommentIcon className="h-4 w-4" />}
                   open={sections.feedback}
                   onToggle={() => toggleSection("feedback")}
@@ -302,7 +311,7 @@ export function ArtifactWorkspace(props: {
                 <SidebarSection
                   id="requests-panel"
                   title="Open threads"
-                  note="Follow the active questions, suggestions, and due dates tied to this doc."
+                  note="Track active requests."
                   badge={String(props.requests.length)}
                   icon={<SparkIcon className="h-4 w-4" />}
                   open={sections.requests}
@@ -337,18 +346,21 @@ export function ArtifactWorkspace(props: {
                 <SidebarSection
                   id="collaborators-panel"
                   title="Collaborators"
-                  note="Move this artifact from a single-point-of-contact doc into a shared workspace asset."
                   icon={<UsersIcon className="h-4 w-4" />}
                   open={sections.collaborators}
                   onToggle={() => toggleSection("collaborators")}
                 >
-                  <ArtifactPermissionsPanel compact artifactId={props.artifactId} />
+                  <ArtifactPermissionsPanel
+                    compact
+                    artifactId={props.artifactId}
+                    onPersonClick={(userId) => setSelectedMemberId(userId)}
+                  />
                 </SidebarSection>
 
                 <SidebarSection
                   id="links-panel"
                   title="Connected artifacts"
-                  note="These links are inferred from repeated block structure and transcription language."
+                  note="Inferred neighbors."
                   icon={<LinkNodesIcon className="h-4 w-4" />}
                   open={sections.links}
                   onToggle={() => toggleSection("links")}
@@ -393,7 +405,7 @@ export function ArtifactWorkspace(props: {
 function SidebarSection(props: {
   id: string;
   title: string;
-  note: string;
+  note?: string;
   badge?: string;
   icon: ReactNode;
   open: boolean;
@@ -422,7 +434,7 @@ function SidebarSection(props: {
               </span>
             ) : null}
           </div>
-          <div className="mt-2 pl-10 text-xs leading-5 text-slate-600">{props.note}</div>
+          {props.note ? <div className="mt-2 pl-10 text-xs leading-5 text-slate-600">{props.note}</div> : null}
         </div>
         <div className="pt-1 text-slate-500">
           {props.open ? <ChevronDownIcon className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}

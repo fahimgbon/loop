@@ -48,6 +48,14 @@ export default async function UnifiedPage(props: { params: Promise<{ workspaceSl
       kind: folder.kind,
       artifactCount: folder.artifactCount,
       updatedAt: folder.updatedAt,
+      artifacts: folder.artifacts.map((artifact) => ({
+        id: artifact.id,
+        title: artifact.title,
+        status: artifact.status,
+        updatedAt: artifact.updated_at,
+        excerpt: artifact.summary_excerpt,
+      })),
+      suggestedBlocks: folder.suggestedBlocks,
     }))
     .sort((left, right) => {
       if (left.kind !== right.kind) return left.kind === "folder" ? -1 : 1;
@@ -68,6 +76,7 @@ export default async function UnifiedPage(props: { params: Promise<{ workspaceSl
       artifacts={artifacts}
       folders={folders}
       inbox={inbox}
+      templates={explorer.templates}
     />
   );
 }

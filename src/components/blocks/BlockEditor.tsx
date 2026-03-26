@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/src/components/Button";
-import { Markdown } from "@/src/components/Markdown";
 import { Textarea } from "@/src/components/Textarea";
 
 export type BlockDto = {
@@ -14,59 +13,36 @@ export type BlockDto = {
   position: number;
 };
 
-export type BlockSuggestionPreview = {
-  originalText: string;
-  suggestedText: string;
-  applyMode: "replace" | "append";
-};
-
 type TableBlockContent = {
   version: 1;
   columns: string[];
   rows: string[][];
 };
 
-type SuggestionPreviewState =
-  | {
-      mode: "replace";
-      before: string;
-      original: string;
-      after: string;
-    }
-  | {
-      mode: "replace_unmatched";
-      content: string;
-      originalText: string;
-    };
-
 export function BlockEditor(props: {
   artifactId: string;
   block: BlockDto;
   autoEdit?: boolean;
-  suggestionPreview?: BlockSuggestionPreview | null;
 }) {
   const isTableBlock = props.block.type === "table";
   const [editing, setEditing] = useState(false);
-  const [content, setContent] = useState(props.block.content_md);
+  const [content, setContent] = useState(isTableBlock ? props.block.content_md : toEditorText(props.block.content_md));
   const [tableDraft, setTableDraft] = useState<TableBlockContent>(() => parseTableBlockContent(props.block.content_md));
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [pointMode, setPointMode] = useState<"addition" | "question" | null>(null);
   const [pointText, setPointText] = useState("");
 
-  const lastSavedRef = useRef(props.block.content_md);
+  const lastSavedRef = useRef(isTableBlock ? props.block.content_md : toEditorText(props.block.content_md));
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const badge = useMemo(() => blockBadge(props.block.type), [props.block.type]);
-  const suggestionState = useMemo(
-    () => buildSuggestionPreviewState(content, props.suggestionPreview),
-    [content, props.suggestionPreview],
-  );
+  const badge = blockBadge(props.block.type);
 
   useEffect(() => {
     if (editing) return;
-    setContent(props.block.content_md);
-    lastSavedRef.current = props.block.content_md;
+    const nextText = isTableBlock ? props.block.content_md : toEditorText(props.block.content_md);
+    setContent(nextText);
+    lastSavedRef.current = nextText;
     if (isTableBlock) {
       setTableDraft(parseTableBlockContent(props.block.content_md));
     }
@@ -88,16 +64,17 @@ export function BlockEditor(props: {
   async function persist(next: string, close: boolean) {
     setSaving(true);
     try {
+      const normalized = isTableBlock ? next : normalizeEditorText(next);
       const res = await fetch(`/api/artifacts/${props.artifactId}/blocks/${props.block.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contentMd: next }),
+        body: JSON.stringify({ contentMd: normalized }),
       });
       if (!res.ok) throw new Error("Save failed");
-      lastSavedRef.current = next;
+      lastSavedRef.current = normalized;
       setSavedAt(Date.now());
-      setContent(next);
-      if (isTableBlock) setTableDraft(parseTableBlockContent(next));
+      setContent(normalized);
+      if (isTableBlock) setTableDraft(parseTableBlockContent(normalized));
       if (close) setEditing(false);
     } finally {
       setSaving(false);
@@ -112,7 +89,7 @@ export function BlockEditor(props: {
     if (isTableBlock) return;
     const text = pointText.trim();
     if (!text) return;
-    const prefix = kind === "question" ? "- -> Question: " : "- -> Addition: ";
+    const prefix = kind === "question" ? "Question: " : "Addition: ";
     const base = lastSavedRef.current.trimEnd();
     const next = base.length ? `${base}\n${prefix}${text}` : `${prefix}${text}`;
     await persist(next, false);
@@ -203,42 +180,27 @@ export function BlockEditor(props: {
                 }
               }}
               onBlur={() => {
-                if (content === lastSavedRef.current) {
+                if ((isTableBlock ? content : normalizeEditorText(content)) === lastSavedRef.current) {
                   setEditing(false);
                   return;
                 }
                 void persist(content, true);
               }}
+              className="min-h-[140px] rounded-2xl border border-slate-200 bg-white px-4 py-4 text-[15px] leading-7 text-slate-900 shadow-[0_12px_32px_-26px_rgba(15,23,42,0.12)]"
             />
           )
         ) : isTableBlock ? (
-          <button
-            type="button"
-            className="w-full cursor-text rounded-2xl border border-slate-200 bg-slate-50/70 p-3 text-left"
-            onClick={enterEditMode}
-          >
+          <div className="w-full rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_10px_24px_-22px_rgba(15,23,42,0.1)]">
             <ReadOnlyTableBlock table={parseTableBlockContent(content)} />
-          </button>
+          </div>
         ) : content.trim().length ? (
-          <div
-            className="cursor-text rounded-xl border border-white/60 bg-white/60 p-3 backdrop-blur-xl"
-            onClick={enterEditMode}
-          >
-            {suggestionState ? (
-              <SuggestionAwareBlockContent state={suggestionState} />
-            ) : (
-              <Markdown markdown={content} />
-            )}
+          <div className="px-1 py-1 text-[15px] leading-7 text-slate-900">
+            <DocumentTextView text={content} />
           </div>
         ) : (
-          <button
-            type="button"
-            onClick={enterEditMode}
-            className="w-full rounded-xl border border-dashed border-white/70 bg-white/50 p-4 text-left text-sm text-muted backdrop-blur-xl hover:bg-white/70"
-          >
-            Type markdown… <span className="text-slate-500">⌘</span>
-            <span className="text-slate-500">⏎</span> to save
-          </button>
+          <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">
+            Empty block.
+          </div>
         )}
       </div>
 
@@ -319,31 +281,6 @@ export function BlockEditor(props: {
   );
 }
 
-function SuggestionAwareBlockContent(props: {
-  state: SuggestionPreviewState;
-}) {
-  return (
-    <div className="grid gap-2">
-      {props.state.mode === "replace" ? (
-        <>
-          {props.state.before.trim() ? <Markdown markdown={props.state.before} /> : null}
-          <div className="whitespace-pre-wrap text-[15px] leading-7 text-slate-400 line-through decoration-rose-300 decoration-2">
-            {props.state.original}
-          </div>
-          {props.state.after.trim() ? <Markdown markdown={props.state.after} /> : null}
-        </>
-      ) : (
-        <>
-          <Markdown markdown={props.state.content} />
-          <div className="whitespace-pre-wrap text-[14px] leading-6 text-slate-400 line-through decoration-rose-300 decoration-2">
-            {props.state.originalText}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
 function EditableTableBlock(props: {
   table: TableBlockContent;
   onChange: (next: TableBlockContent) => void;
@@ -400,16 +337,6 @@ function EditableTableBlock(props: {
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Button type="button" variant="secondary" onClick={addColumn} className="px-3 py-2 text-xs">
-          Add column
-        </Button>
-        <Button type="button" variant="secondary" onClick={addRow} className="px-3 py-2 text-xs">
-          Add row
-        </Button>
-        <div className="text-xs text-slate-500">Edit cells directly, then save the block.</div>
-      </div>
-
       <div className="overflow-x-auto">
         <table className="min-w-full border-separate border-spacing-0">
           <thead>
@@ -435,7 +362,16 @@ function EditableTableBlock(props: {
                   </div>
                 </th>
               ))}
-              <th className="w-12 border-b border-slate-200 px-2 pb-3" />
+              <th className="w-14 border-b border-slate-200 px-2 pb-3 align-middle">
+                <button
+                  type="button"
+                  onClick={addColumn}
+                  aria-label="Add column"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white text-lg font-medium text-slate-600 transition hover:border-slate-400 hover:bg-slate-50"
+                >
+                  +
+                </button>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -465,6 +401,19 @@ function EditableTableBlock(props: {
                 </td>
               </tr>
             ))}
+            <tr>
+              <td colSpan={table.columns.length + 1} className="px-2 pt-3">
+                <button
+                  type="button"
+                  onClick={addRow}
+                  aria-label="Add row"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+                >
+                  <span className="text-base leading-none">+</span>
+                  <span>Add row</span>
+                </button>
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -503,33 +452,6 @@ function ReadOnlyTableBlock(props: { table: TableBlockContent }) {
       </div>
     </div>
   );
-}
-
-function buildSuggestionPreviewState(
-  content: string,
-  suggestion?: BlockSuggestionPreview | null,
-): SuggestionPreviewState | null {
-  if (!suggestion) return null;
-
-  const originalText = suggestion.originalText.trim();
-  if (suggestion.applyMode === "replace" && originalText) {
-    const index = content.indexOf(originalText);
-    if (index >= 0) {
-      return {
-        mode: "replace",
-        before: content.slice(0, index),
-        original: content.slice(index, index + originalText.length),
-        after: content.slice(index + originalText.length),
-      };
-    }
-    return {
-      mode: "replace_unmatched",
-      content,
-      originalText,
-    };
-  }
-
-  return null;
 }
 
 function parseTableBlockContent(content: string): TableBlockContent {
@@ -614,6 +536,68 @@ function splitMarkdownTableLine(line: string) {
     .replace(/\|$/, "")
     .split("|")
     .map((cell) => cell.trim());
+}
+
+function DocumentTextView(props: { text: string }) {
+  const sections = props.text
+    .split(/\n{2,}/)
+    .map((section) => section.trim())
+    .filter(Boolean);
+
+  if (sections.length === 0) return null;
+
+  return (
+    <div className="grid gap-3">
+      {sections.map((section, index) => {
+        const lines = section.split("\n").map((line) => line.trimEnd());
+        const isList = lines.every((line) => /^\s*(?:[-*•]|\d+\.)\s+/.test(line));
+
+        if (isList) {
+          return (
+            <ul key={index} className="grid gap-2 pl-5 text-[15px] leading-7 text-slate-900">
+              {lines.map((line, itemIndex) => (
+                <li key={itemIndex}>{line.replace(/^\s*(?:[-*•]|\d+\.)\s+/, "")}</li>
+              ))}
+            </ul>
+          );
+        }
+
+        return (
+          <p key={index} className="whitespace-pre-wrap text-[15px] leading-7 text-slate-900">
+            {section}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
+function toEditorText(content: string) {
+  return normalizeEditorText(
+    content
+      .replace(/\r\n/g, "\n")
+      .replace(/^#{1,6}\s+/gm, "")
+      .replace(/^>\s?/gm, "")
+      .replace(/\*\*(.*?)\*\*/g, "$1")
+      .replace(/__(.*?)__/g, "$1")
+      .replace(/\*(.*?)\*/g, "$1")
+      .replace(/_(.*?)_/g, "$1")
+      .replace(/~~(.*?)~~/g, "$1")
+      .replace(/`([^`]*)`/g, "$1")
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      .replace(/^\s*[-*+]\s+/gm, "• ")
+      .replace(/^\s*#### Accepted suggestion\s*$/gim, "")
+      .trim(),
+  );
+}
+
+function normalizeEditorText(text: string) {
+  return text
+    .replace(/\r\n/g, "\n")
+    .replace(/\u00A0/g, " ")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 function blockBadge(type: string) {

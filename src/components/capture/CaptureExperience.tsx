@@ -20,10 +20,10 @@ type ContributionSummary = {
   extracted_json: unknown | null;
 };
 
-export function CaptureExperience(props: { workspaceSlug: string }) {
+export function CaptureExperience(props: { workspaceSlug: string; initialContributionId?: string | null }) {
   const router = useRouter();
   const previewRef = useRef<HTMLDivElement | null>(null);
-  const [contributionId, setContributionId] = useState<string | null>(null);
+  const [contributionId, setContributionId] = useState<string | null>(props.initialContributionId ?? null);
   const [contribution, setContribution] = useState<ContributionSummary | null>(null);
   const [title, setTitle] = useState("New idea");
   const [creating, setCreating] = useState(false);
@@ -76,6 +76,11 @@ export function CaptureExperience(props: { workspaceSlug: string }) {
     if (recording) return { title: "Keep talking", body: "Pause when done. Loop will take it from here." };
     return { title: "Start speaking", body: "One tap to begin. Loop handles the rest." };
   }, [portal, creating, transcript, contributionId, recording]);
+
+  useEffect(() => {
+    if (!props.initialContributionId) return;
+    setContributionId((current) => current ?? props.initialContributionId ?? null);
+  }, [props.initialContributionId]);
 
   useEffect(() => {
     if (!contributionId) return;

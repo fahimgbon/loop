@@ -10,6 +10,7 @@ import { GoogleSettingsForm } from "@/src/components/integrations/GoogleSettings
 import { SlackSettingsForm } from "@/src/components/integrations/SlackSettingsForm";
 import { AnywhereMeetingCapture } from "@/src/components/meetings/AnywhereMeetingCapture";
 import { WorkspaceMembersPanel } from "@/src/components/workspace/WorkspaceMembersPanel";
+import { WorkspaceHeroActions } from "@/src/components/workspace/WorkspaceHeroActions";
 import { WorkspaceTeamSurface } from "@/src/components/workspace/WorkspaceTeamSurface";
 import {
   CaptureIcon,
@@ -80,22 +81,45 @@ export default async function WorkspacePage(props: { params: Promise<{ workspace
 
   return (
     <main className="px-3 py-3 lg:px-5 lg:py-4">
-      <section className="rounded-[30px] border border-slate-200/90 bg-white/96 p-6 shadow-[0_24px_80px_-56px_rgba(15,23,42,0.22)]">
-        <div className="flex flex-wrap items-start justify-between gap-5">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
-              <SparkIcon className="h-4 w-4" />
-              Workspace
+      <section className="rounded-[32px] border border-slate-300 bg-white p-6 shadow-[0_30px_90px_-62px_rgba(15,23,42,0.26)]">
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_360px]">
+          <div className="grid gap-5">
+            <div className="rounded-[28px] border border-slate-200 bg-[radial-gradient(circle_at_top_left,rgba(103,173,255,0.18),transparent_36%),radial-gradient(circle_at_88%_18%,rgba(198,146,255,0.16),transparent_30%),linear-gradient(180deg,#ffffff,#fbfcff)] p-6">
+              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
+                <SparkIcon className="h-4 w-4" />
+                Workspace
+              </div>
+              <h1 className="mt-3 text-4xl font-semibold tracking-[-0.05em] text-slate-950">
+                {workspace?.name ?? "Aceync"}
+              </h1>
+              <div className="mt-3 max-w-2xl text-sm leading-6 text-slate-700">
+                Shared context, live questions, and connected work in one place.
+              </div>
+              <WorkspaceHeroActions workspaceSlug={workspaceSlug} />
+              <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <DashboardMetricCard
+                  icon={<GraphIcon className="h-4 w-4" />}
+                  value={String(artifacts.length)}
+                  label="Artifacts"
+                />
+                <DashboardMetricCard
+                  icon={<FolderIcon className="h-4 w-4" />}
+                  value={String(folders.length)}
+                  label="Folders"
+                />
+                <DashboardMetricCard
+                  icon={<CommentIcon className="h-4 w-4" />}
+                  value={String(reviewRequests.length)}
+                  label="Open threads"
+                />
+                <DashboardMetricCard
+                  icon={<UsersIcon className="h-4 w-4" />}
+                  value={String(members.length)}
+                  label="Collaborators"
+                />
+              </div>
             </div>
-            <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-slate-950">
-              {workspace?.name ?? "Aceync"}
-            </h1>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <StatPill icon={<GraphIcon className="h-4 w-4" />} label={`${artifacts.length} artifacts`} />
-              <StatPill icon={<FolderIcon className="h-4 w-4" />} label={`${folders.length} folders`} />
-              <StatPill icon={<CommentIcon className="h-4 w-4" />} label={`${reviewRequests.length} live threads`} />
-              <StatPill icon={<UsersIcon className="h-4 w-4" />} label={`${members.length} collaborators`} />
-            </div>
+
           </div>
 
           <WorkspaceTeamSurface members={memberSummaries} workspaceSlug={workspaceSlug} variant="summary" />
@@ -294,11 +318,14 @@ export default async function WorkspacePage(props: { params: Promise<{ workspace
   );
 }
 
-function StatPill(props: { icon: ReactNode; label: string }) {
+function DashboardMetricCard(props: { icon: ReactNode; value: string; label: string }) {
   return (
-    <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700">
-      {props.icon}
-      {props.label}
-    </span>
+    <div className="rounded-[22px] border border-slate-200 bg-white px-4 py-4 shadow-[0_14px_34px_-28px_rgba(15,23,42,0.18)]">
+      <div className="flex items-center justify-between gap-3 text-slate-600">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.18em]">{props.label}</span>
+        {props.icon}
+      </div>
+      <div className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-slate-950">{props.value}</div>
+    </div>
   );
 }

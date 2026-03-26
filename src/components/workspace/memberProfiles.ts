@@ -1,8 +1,16 @@
+import type { StaticImageData } from "next/image";
+
+import bitmojiKoreanHeart from "../../../BitmojiKoreanHeart.png";
+import bitmojiLaptop from "../../../BitmojiLaptop.png";
+import bitmojiOther from "../../../BitmojiOther.png";
+import bitmojiRaisedHand from "../../../BitmojiRaisedHand.png";
+
 export type WorkspaceProfileMember = {
   userId: string;
   name: string;
   email: string;
   role: "admin" | "member";
+  avatarSrc?: StaticImageData | null;
 };
 
 type MemberTone = {
@@ -19,6 +27,15 @@ type MemberProfilePreset = {
   rituals: string[];
   favoriteSpaces: string[];
 };
+
+const PROFILE_AVATARS: Record<string, StaticImageData> = {
+  "admin@loop.local": bitmojiLaptop,
+  "hannah@loop.local": bitmojiRaisedHand,
+  "marcus@loop.local": bitmojiOther,
+  "priya@loop.local": bitmojiKoreanHeart,
+};
+
+const DEFAULT_AVATARS = [bitmojiLaptop, bitmojiRaisedHand, bitmojiOther, bitmojiKoreanHeart];
 
 const PROFILE_PRESETS: Record<string, MemberProfilePreset> = {
   "admin@loop.local": {
@@ -62,11 +79,16 @@ export function buildMemberProfile(member: WorkspaceProfileMember) {
   const preset = PROFILE_PRESETS[member.email.toLowerCase()] ?? defaultPreset(member);
   const tone = TONES[stableHash(member.email || member.name) % TONES.length];
   const pulse = stableHash(`${member.email}:${member.role}`);
+  const avatarSrc =
+    member.avatarSrc ??
+    PROFILE_AVATARS[member.email.toLowerCase()] ??
+    DEFAULT_AVATARS[stableHash(`${member.email}:${member.userId}`) % DEFAULT_AVATARS.length];
 
   return {
     ...member,
     ...preset,
     tone,
+    avatarSrc,
     stats: {
       artifacts: 4 + (pulse % 5),
       threads: 1 + (pulse % 4),

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect } from "react";
 import type { ReactNode } from "react";
 
@@ -68,13 +69,17 @@ export function WorkspaceMemberProfileSheet(props: {
           <div className="flex items-start justify-between gap-4">
             <div className="flex min-w-0 items-center gap-4">
               <div
-                className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] border border-slate-200/90 text-xl font-semibold shadow-[0_20px_40px_-30px_rgba(15,23,42,0.18)]"
+                className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-[22px] border border-slate-200/90 text-xl font-semibold shadow-[0_20px_40px_-30px_rgba(15,23,42,0.18)]"
                 style={{
                   background: `linear-gradient(145deg, rgb(${profile.tone.glow}), rgb(${profile.tone.surface}))`,
                   color: `rgb(${profile.tone.ink})`,
                 }}
               >
-                {getInitials(profile.name)}
+                {profile.avatarSrc ? (
+                  <Image src={profile.avatarSrc} alt={profile.name} fill sizes="64px" className="object-cover" />
+                ) : (
+                  getInitials(profile.name)
+                )}
               </div>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
