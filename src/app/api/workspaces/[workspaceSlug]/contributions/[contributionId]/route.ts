@@ -1,13 +1,13 @@
-import { getSession } from "@/src/server/auth";
+import { getRequestSession } from "@/src/server/auth";
 import { withClient } from "@/src/server/db";
 import { errorJson, json } from "@/src/server/http";
 import { getContributionForWorkspace } from "@/src/server/repo/contributions";
 
 export async function GET(
-  _: Request,
+  request: Request,
   context: { params: Promise<{ workspaceSlug: string; contributionId: string }> },
 ) {
-  const session = await getSession();
+  const session = await getRequestSession(request);
   if (!session) return errorJson(401, "Unauthorized");
 
   const { workspaceSlug, contributionId } = await context.params;

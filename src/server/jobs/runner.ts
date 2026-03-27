@@ -4,6 +4,7 @@ import { getAiProvider } from "@/src/server/ai";
 import { withClient } from "@/src/server/db";
 import { JOB_TYPES } from "@/src/server/jobs/jobTypes";
 import { getContribution, updateContributionTranscript } from "@/src/server/repo/contributions";
+import { pathToMimeType } from "@/src/server/storage";
 import { getJobById, markJobFailed, markJobRunning, markJobSucceeded } from "@/src/server/repo/jobs";
 import type { DbJob } from "@/src/server/repo/jobs";
 import { maybeCreateSuggestionsFromContribution } from "@/src/server/services/feedbackSuggestionService";
@@ -35,7 +36,10 @@ export async function processJob(job: DbJob, options?: { allowRetry?: boolean })
       if (!contribution.audio_path) throw new Error("Contribution has no audio_path");
 
       const absolutePath = path.join(process.cwd(), contribution.audio_path);
-      const transcription = await ai.transcribeAudio({ absolutePath, mimeType: null });
+      const transcription = await ai.transcribeAudio({
+        absolutePath,
+        mimeType: pathToMimeType(contribution.audio_path),
+      });
       const classification = await ai.classifyText({ text: transcription.transcript });
 
       await withClient((client) =>

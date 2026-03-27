@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { getSession } from "@/src/server/auth";
+import { getRequestSession } from "@/src/server/auth";
 import { withClient } from "@/src/server/db";
 import { errorJson, json } from "@/src/server/http";
 import { listOpenReviewRequests } from "@/src/server/repo/reviewRequests";
@@ -13,7 +13,7 @@ import { WebClient } from "@slack/web-api";
 import { setReviewRequestSlackLink } from "@/src/server/repo/reviewRequests";
 
 export async function GET(_: Request, context: { params: Promise<{ workspaceSlug: string }> }) {
-  const session = await getSession();
+  const session = await getRequestSession(_);
   if (!session) return errorJson(401, "Unauthorized");
 
   const { workspaceSlug } = await context.params;
@@ -32,7 +32,7 @@ const createSchema = z.object({
 });
 
 export async function POST(request: Request, context: { params: Promise<{ workspaceSlug: string }> }) {
-  const session = await getSession();
+  const session = await getRequestSession(request);
   if (!session) return errorJson(401, "Unauthorized");
 
   const { workspaceSlug } = await context.params;

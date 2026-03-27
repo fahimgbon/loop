@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { AutoRefresh } from "@/src/components/live/AutoRefresh";
 import { ReviewResponseComposer } from "@/src/components/reviews/ReviewResponseComposer";
 import { getSession } from "@/src/server/auth";
 import { withClient } from "@/src/server/db";
@@ -32,6 +33,7 @@ export default async function ReviewRequestPage(props: {
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-8">
+      <AutoRefresh intervalMs={3000} />
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">{request.title}</h1>

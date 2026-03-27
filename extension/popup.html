@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Aceync Docs</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="popup-shell">
+      <div class="intent-pill">Aceync Docs</div>
+      <h1>Connect this extension</h1>
+      <p class="lede">
+        Use your Aceync workspace URL and an extension token from <code>/extension/connect</code>.
+      </p>
+
+      <form id="config-form" class="popup-card">
+        <label class="field">
+          <span>App URL</span>
+          <input id="app-url" name="appUrl" type="url" placeholder="http://localhost:4000" required />
+        </label>
+
+        <label class="field">
+          <span>Extension token</span>
+          <textarea id="token" name="token" rows="5" placeholder="Paste the token from Aceync" required></textarea>
+        </label>
+
+        <div class="actions">
+          <button type="submit" class="btn btn-primary">Save and validate</button>
+          <button type="button" id="open-connect" class="btn btn-secondary">Open connect page</button>
+        </div>
+      </form>
+
+      <section class="popup-card status-card">
+        <div class="status-row">
+          <span class="status-dot" id="status-dot"></span>
+          <span id="status-label">Not connected</span>
+        </div>
+        <p id="status-detail" class="muted">
+          Save your app URL and extension token to let the Google Docs panel talk to Aceync.
+        </p>
+      </section>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

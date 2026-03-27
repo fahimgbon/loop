@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { getSession } from "@/src/server/auth";
+import { getRequestSession } from "@/src/server/auth";
 import { errorJson, json } from "@/src/server/http";
 import { createWebTextContribution } from "@/src/server/services/contributionService";
 
@@ -11,7 +11,7 @@ const schema = z.object({
 });
 
 export async function POST(request: Request, context: { params: Promise<{ workspaceSlug: string }> }) {
-  const session = await getSession();
+  const session = await getRequestSession(request);
   if (!session) return errorJson(401, "Unauthorized");
 
   const { workspaceSlug } = await context.params;
@@ -31,4 +31,3 @@ export async function POST(request: Request, context: { params: Promise<{ worksp
 
   return json({ ok: true, contributionId: created.id });
 }
-

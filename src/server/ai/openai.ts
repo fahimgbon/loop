@@ -23,7 +23,8 @@ export class OpenAiProvider implements AiProvider {
     // NOTE: This is intentionally conservative: it may need updates depending on your OpenAI API version.
     const { readFile } = await import("node:fs/promises");
     const bytes = await readFile(input.absolutePath);
-    const file = new File([bytes], "audio", { type: input.mimeType ?? "application/octet-stream" });
+    const extension = mimeTypeToExtension(input.mimeType);
+    const file = new File([bytes], `capture.${extension}`, { type: input.mimeType ?? "application/octet-stream" });
 
     const form = new FormData();
     form.append("file", file);
@@ -47,3 +48,26 @@ export class OpenAiProvider implements AiProvider {
   }
 }
 
+function mimeTypeToExtension(mimeType?: string | null) {
+  switch (mimeType) {
+    case "audio/wav":
+      return "wav";
+    case "audio/mpeg":
+      return "mp3";
+    case "audio/mp4":
+      return "m4a";
+    case "audio/ogg":
+      return "ogg";
+    case "video/mp4":
+      return "mp4";
+    case "video/quicktime":
+      return "mov";
+    case "video/x-matroska":
+      return "mkv";
+    case "video/webm":
+    case "audio/webm":
+      return "webm";
+    default:
+      return "bin";
+  }
+}
