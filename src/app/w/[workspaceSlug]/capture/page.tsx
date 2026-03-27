@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export default async function CapturePage(props: {
   params: Promise<{ workspaceSlug: string }>;
-  searchParams?: Promise<{ contributionId?: string | string[] }>;
+  searchParams?: Promise<{ contributionId?: string | string[]; slackCapture?: string | string[] }>;
 }) {
   const session = await getSession();
   if (!session) redirect("/login");
@@ -16,12 +16,25 @@ export default async function CapturePage(props: {
   if (workspaceSlug !== session.workspaceSlug) redirect(`/w/${session.workspaceSlug}/capture`);
   const searchParams = props.searchParams ? await props.searchParams : undefined;
   const contributionParam = searchParams?.contributionId;
+  const slackCaptureParam = searchParams?.slackCapture;
   const initialContributionId =
     typeof contributionParam === "string"
       ? contributionParam
       : Array.isArray(contributionParam)
         ? contributionParam[0] ?? null
         : null;
+  const slackCaptureToken =
+    typeof slackCaptureParam === "string"
+      ? slackCaptureParam
+      : Array.isArray(slackCaptureParam)
+        ? slackCaptureParam[0] ?? null
+        : null;
 
-  return <CaptureExperience workspaceSlug={workspaceSlug} initialContributionId={initialContributionId} />;
+  return (
+    <CaptureExperience
+      workspaceSlug={workspaceSlug}
+      initialContributionId={initialContributionId}
+      slackCaptureToken={slackCaptureToken}
+    />
+  );
 }

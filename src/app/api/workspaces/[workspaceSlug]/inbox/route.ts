@@ -1,10 +1,10 @@
-import { getSession } from "@/src/server/auth";
+import { getRequestSession } from "@/src/server/auth";
 import { withClient } from "@/src/server/db";
 import { errorJson, json } from "@/src/server/http";
 import { listInboxContributions } from "@/src/server/repo/contributions";
 
-export async function GET(_: Request, context: { params: Promise<{ workspaceSlug: string }> }) {
-  const session = await getSession();
+export async function GET(request: Request, context: { params: Promise<{ workspaceSlug: string }> }) {
+  const session = await getRequestSession(request);
   if (!session) return errorJson(401, "Unauthorized");
 
   const { workspaceSlug } = await context.params;
@@ -13,4 +13,3 @@ export async function GET(_: Request, context: { params: Promise<{ workspaceSlug
   const items = await withClient((client) => listInboxContributions(client, session.workspaceId));
   return json({ items });
 }
-

@@ -20,7 +20,11 @@ type ContributionSummary = {
   extracted_json: unknown | null;
 };
 
-export function CaptureExperience(props: { workspaceSlug: string; initialContributionId?: string | null }) {
+export function CaptureExperience(props: {
+  workspaceSlug: string;
+  initialContributionId?: string | null;
+  slackCaptureToken?: string | null;
+}) {
   const router = useRouter();
   const previewRef = useRef<HTMLDivElement | null>(null);
   const [contributionId, setContributionId] = useState<string | null>(props.initialContributionId ?? null);
@@ -70,11 +74,11 @@ export function CaptureExperience(props: { workspaceSlug: string; initialContrib
 
   const guide = useMemo(() => {
     if (portal) return { title: "Opening your artifact", body: "We are routing you to the structured doc." };
-    if (creating) return { title: "Structuring your doc", body: "Loop is turning your note into blocks." };
+    if (creating) return { title: "Structuring your doc", body: "Aceync is turning your note into blocks." };
     if (transcript) return { title: "Ready to publish", body: "Auto-publish is on. You can edit the title." };
     if (contributionId) return { title: "Transcribing", body: "Hold on, capturing the clean transcript." };
-    if (recording) return { title: "Keep talking", body: "Pause when done. Loop will take it from here." };
-    return { title: "Start speaking", body: "One tap to begin. Loop handles the rest." };
+    if (recording) return { title: "Keep talking", body: "Pause when done. Aceync will take it from here." };
+    return { title: "Start speaking", body: "One tap to begin. Aceync handles the rest." };
   }, [portal, creating, transcript, contributionId, recording]);
 
   useEffect(() => {
@@ -275,6 +279,7 @@ export function CaptureExperience(props: { workspaceSlug: string; initialContrib
             <div className={phase === "idle" ? "guide-ring rounded-[28px]" : ""}>
               <CaptureRecorder
                 workspaceSlug={props.workspaceSlug}
+                slackCaptureToken={props.slackCaptureToken ?? undefined}
                 onRecordingChange={setRecording}
                 onUploaded={(id) => {
                   setContributionId(id);
@@ -288,9 +293,14 @@ export function CaptureExperience(props: { workspaceSlug: string; initialContrib
             </div>
 
             <div className="flex flex-col items-center gap-3 text-xs text-muted">
+              {props.slackCaptureToken ? (
+                <div className="rounded-full border border-white/60 bg-white/55 px-3 py-1 backdrop-blur-xl">
+                  Opened from Slack. Record now or upload an existing voice/video file and Aceync will route it into this workspace.
+                </div>
+              ) : null}
               <div>
                 {phase === "idle"
-                  ? "One tap. Speak. Pause. Loop auto‑stops and builds the doc."
+                  ? "One tap. Speak. Pause. Aceync auto‑stops and builds the doc."
                   : phase === "transcribing"
                     ? "Transcribing and classifying…"
                     : phase === "ready"
@@ -343,7 +353,7 @@ export function CaptureExperience(props: { workspaceSlug: string; initialContrib
               <div>
                 <div className="text-sm font-semibold">Your doc, materializing</div>
                 <div className="mt-1 text-xs text-muted">
-                  {transcript ? "Preview of what Loop will publish." : "Waiting for your transcript…"}
+                  {transcript ? "Preview of what Aceync will publish." : "Waiting for your transcript…"}
                 </div>
               </div>
               <div className="intent-pill">{intentLabel}</div>

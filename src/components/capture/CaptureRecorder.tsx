@@ -6,6 +6,7 @@ import { Button } from "@/src/components/Button";
 
 export function CaptureRecorder(props: {
   workspaceSlug: string;
+  slackCaptureToken?: string;
   onUploaded: (contributionId: string) => void;
   onRecordingChange?: (recording: boolean) => void;
   onAudioLevel?: (level: number) => void;
@@ -165,6 +166,7 @@ export function CaptureRecorder(props: {
   async function uploadBlob(blob: Blob, filename: string) {
     const form = new FormData();
     form.append("file", blob, filename);
+    if (props.slackCaptureToken) form.append("slackCaptureToken", props.slackCaptureToken);
     const res = await fetch(`/api/workspaces/${props.workspaceSlug}/contributions/audio`, {
       method: "POST",
       body: form,
@@ -256,9 +258,9 @@ export function CaptureRecorder(props: {
           onClick={() => fileInputRef.current?.click()}
           disabled={recording || uploading}
         >
-          Upload recording
+          Upload audio or video
         </Button>
-        <span className="text-xs text-muted">Perfect for mobile voice memos and quick pings.</span>
+        <span className="text-xs text-muted">Perfect for mobile voice memos, meeting clips, and quick updates.</span>
       </div>
 
       <input

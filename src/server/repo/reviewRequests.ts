@@ -60,15 +60,24 @@ export async function listOpenReviewRequests(
   client: pg.PoolClient,
   workspaceId: string,
   artifactId?: string,
-): Promise<Array<Pick<DbReviewRequest, "id" | "artifact_id" | "title" | "questions" | "due_at" | "created_at">>> {
+): Promise<
+  Array<
+    Pick<DbReviewRequest, "id" | "artifact_id" | "title" | "questions" | "due_at" | "created_at"> & {
+      artifact_title: string | null;
+    }
+  >
+> {
   const res = await client.query<
-    Pick<DbReviewRequest, "id" | "artifact_id" | "title" | "questions" | "due_at" | "created_at">
+    Pick<DbReviewRequest, "id" | "artifact_id" | "title" | "questions" | "due_at" | "created_at"> & {
+      artifact_title: string | null;
+    }
   >(
-    `select id, artifact_id, title, questions, due_at, created_at
-     from review_requests
-     where workspace_id = $1 and status = 'open'
+    `select r.id, r.artifact_id, r.title, r.questions, r.due_at, r.created_at, a.title as artifact_title
+     from review_requests r
+     join artifacts a on a.id = r.artifact_id
+     where r.workspace_id = $1 and r.status = 'open'
      ${artifactId ? "and artifact_id = $2" : ""}
-     order by created_at desc
+     order by r.created_at desc
      limit 50`,
     artifactId ? [workspaceId, artifactId] : [workspaceId],
   );

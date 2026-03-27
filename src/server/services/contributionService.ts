@@ -10,6 +10,7 @@ export async function createWebTextContribution(input: {
   artifactId?: string | null;
   blockId?: string | null;
   text: string;
+  sourceRef?: string | null;
 }) {
   return withClient(async (client) => {
     await client.query("begin;");
@@ -20,6 +21,7 @@ export async function createWebTextContribution(input: {
         blockId: input.blockId ?? null,
         source: "web_text",
         textContent: input.text,
+        sourceRef: input.sourceRef ?? null,
         createdBy: input.userId,
       });
 
@@ -55,6 +57,39 @@ export async function createWebAudioContribution(input: {
         blockId: input.blockId ?? null,
         source: "web_audio",
         audioPath: input.audioPath,
+        createdBy: input.userId,
+      });
+
+      const job = await enqueueJob(client, {
+        workspaceId: input.workspaceId,
+        type: JOB_TYPES.TRANSCRIBE_CONTRIBUTION,
+        payload: { contributionId: contribution.id },
+      });
+
+      await client.query("commit;");
+      await maybeRunJob(job.id);
+      return contribution;
+    } catch (err) {
+      await client.query("rollback;");
+      throw err;
+    }
+  });
+}
+
+export async function createSlackMediaContribution(input: {
+  workspaceId: string;
+  userId: string;
+  audioPath: string;
+  sourceRef: string;
+}) {
+  return withClient(async (client) => {
+    await client.query("begin;");
+    try {
+      const contribution = await createContribution(client, {
+        workspaceId: input.workspaceId,
+        source: "slack",
+        audioPath: input.audioPath,
+        sourceRef: input.sourceRef,
         createdBy: input.userId,
       });
 

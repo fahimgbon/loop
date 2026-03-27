@@ -1,4 +1,4 @@
-import { getSession } from "@/src/server/auth";
+import { getRequestSession } from "@/src/server/auth";
 import { errorJson, json } from "@/src/server/http";
 import { saveAudioFile } from "@/src/server/storage";
 import { addAudioReviewResponse } from "@/src/server/services/reviewResponseService";
@@ -7,7 +7,7 @@ export async function POST(
   request: Request,
   context: { params: Promise<{ workspaceSlug: string; reviewRequestId: string }> },
 ) {
-  const session = await getSession();
+  const session = await getRequestSession(request);
   if (!session) return errorJson(401, "Unauthorized");
 
   const { workspaceSlug, reviewRequestId } = await context.params;
@@ -20,7 +20,12 @@ export async function POST(
   if (!(file instanceof File)) return errorJson(400, "Missing audio file");
 
   const bytes = new Uint8Array(await file.arrayBuffer());
-  const saved = await saveAudioFile({ workspaceId: session.workspaceId, bytes, mimeType: file.type });
+  const saved = await saveAudioFile({
+    workspaceId: session.workspaceId,
+    bytes,
+    mimeType: file.type,
+    originalFilename: file.name,
+  });
 
   const created = await addAudioReviewResponse({
     workspaceId: session.workspaceId,
@@ -32,4 +37,3 @@ export async function POST(
 
   return json({ ok: true, contributionId: created.contributionId });
 }
-

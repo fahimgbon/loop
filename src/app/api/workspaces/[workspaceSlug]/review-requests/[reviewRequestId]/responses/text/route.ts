@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { getSession } from "@/src/server/auth";
+import { getRequestSession } from "@/src/server/auth";
 import { errorJson, json } from "@/src/server/http";
 import { addTextReviewResponse } from "@/src/server/services/reviewResponseService";
 
@@ -12,7 +12,7 @@ export async function POST(
   request: Request,
   context: { params: Promise<{ workspaceSlug: string; reviewRequestId: string }> },
 ) {
-  const session = await getSession();
+  const session = await getRequestSession(request);
   if (!session) return errorJson(401, "Unauthorized");
 
   const { workspaceSlug, reviewRequestId } = await context.params;
@@ -32,4 +32,3 @@ export async function POST(
 
   return json({ ok: true, contributionId: created.contributionId });
 }
-

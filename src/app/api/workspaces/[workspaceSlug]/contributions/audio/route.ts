@@ -1,10 +1,11 @@
-import { getSession } from "@/src/server/auth";
+import { getRequestSession } from "@/src/server/auth";
 import { errorJson, json } from "@/src/server/http";
 import { saveAudioFile } from "@/src/server/storage";
-import { createWebAudioContribution } from "@/src/server/services/contributionService";
+import { verifySlackCaptureToken } from "@/src/server/slack/capture";
+import { createSlackMediaContribution, createWebAudioContribution } from "@/src/server/services/contributionService";
 
 export async function POST(request: Request, context: { params: Promise<{ workspaceSlug: string }> }) {
-  const session = await getSession();
+  const session = await getRequestSession(request);
   if (!session) return errorJson(401, "Unauthorized");
 
   const { workspaceSlug } = await context.params;
@@ -14,22 +15,53 @@ export async function POST(request: Request, context: { params: Promise<{ worksp
   if (!form) return errorJson(400, "Invalid form");
 
   const file = form.get("file");
-  if (!(file instanceof File)) return errorJson(400, "Missing audio file");
+  if (!(file instanceof File)) return errorJson(400, "Missing recording or video file");
 
   const bytes = new Uint8Array(await file.arrayBuffer());
-  const saved = await saveAudioFile({ workspaceId: session.workspaceId, bytes, mimeType: file.type });
+  const saved = await saveAudioFile({
+    workspaceId: session.workspaceId,
+    bytes,
+    mimeType: file.type,
+    originalFilename: file.name,
+  });
 
   const artifactId = typeof form.get("artifactId") === "string" ? String(form.get("artifactId")) : null;
   const blockId = typeof form.get("blockId") === "string" ? String(form.get("blockId")) : null;
+  const slackCaptureToken =
+    typeof form.get("slackCaptureToken") === "string" ? String(form.get("slackCaptureToken")).trim() : "";
 
-  const created = await createWebAudioContribution({
-    workspaceId: session.workspaceId,
-    userId: session.userId,
-    artifactId,
-    blockId,
+  const slackCapture = slackCaptureToken ? await verifySlackCaptureToken(slackCaptureToken) : null;
+  if (slackCaptureToken && (!slackCapture || slackCapture.workspaceId !== session.workspaceId)) {
+    return errorJson(400, "Invalid Slack capture link");
+  }
+
+  const created = slackCapture
+    ? await createSlackMediaContribution({
+        workspaceId: session.workspaceId,
+        userId: session.userId,
+        audioPath: saved.relativePath,
+        sourceRef: JSON.stringify({
+          kind: "slack_capture",
+          teamId: slackCapture.slackTeamId,
+          channelId: slackCapture.channelId,
+          userId: slackCapture.slackUserId,
+          uploadedBy: session.userId,
+          fileName: file.name || null,
+          mimeType: file.type || null,
+        }),
+      })
+    : await createWebAudioContribution({
+        workspaceId: session.workspaceId,
+        userId: session.userId,
+        artifactId,
+        blockId,
+        audioPath: saved.relativePath,
+      });
+
+  return json({
+    ok: true,
+    contributionId: created.id,
     audioPath: saved.relativePath,
+    source: slackCapture ? "slack" : "web_audio",
   });
-
-  return json({ ok: true, contributionId: created.id, audioPath: saved.relativePath });
 }
-
