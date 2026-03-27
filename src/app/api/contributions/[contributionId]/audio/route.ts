@@ -5,6 +5,7 @@ import { getSession } from "@/src/server/auth";
 import { withClient } from "@/src/server/db";
 import { errorJson } from "@/src/server/http";
 import { getContribution } from "@/src/server/repo/contributions";
+import { pathToMimeType } from "@/src/server/storage";
 
 export async function GET(_: Request, context: { params: Promise<{ contributionId: string }> }) {
   const session = await getSession();
@@ -19,7 +20,7 @@ export async function GET(_: Request, context: { params: Promise<{ contributionI
 
   const fullPath = path.join(process.cwd(), contribution.audio_path);
   const bytes = await readFile(fullPath);
-  const mimeType = extToMime(path.extname(fullPath).slice(1));
+  const mimeType = pathToMimeType(fullPath);
 
   return new Response(bytes, {
     status: 200,
@@ -29,21 +30,3 @@ export async function GET(_: Request, context: { params: Promise<{ contributionI
     },
   });
 }
-
-function extToMime(ext: string) {
-  switch (ext) {
-    case "webm":
-      return "audio/webm";
-    case "wav":
-      return "audio/wav";
-    case "mp3":
-      return "audio/mpeg";
-    case "m4a":
-      return "audio/mp4";
-    case "ogg":
-      return "audio/ogg";
-    default:
-      return "application/octet-stream";
-  }
-}
-

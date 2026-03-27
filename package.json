@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
+    "dev:4000": "next dev --port 4000",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

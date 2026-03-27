@@ -1,16 +1,16 @@
 display_information:
-  name: Loop
+  name: Aceync
   description: Audio-first async feedback + decision artifacts
   background_color: "#0a0a0c"
 features:
   bot_user:
-    display_name: Loop
+    display_name: Aceync
     always_online: false
   slash_commands:
-    - command: /loop
+    - command: /aceync
       url: ${APP_BASE_URL}/api/slack/commands
-      description: Capture notes or request async feedback
-      usage_hint: "note <text> | request | record"
+      description: Search Aceync, capture notes, or record from Slack
+      usage_hint: "search <query> | recent | record | note <text> | request"
       should_escape: false
 oauth_config:
   redirect_urls:
@@ -20,15 +20,17 @@ oauth_config:
       - commands
       - chat:write
       - app_mentions:read
+      - links:read
+      - links:write
 settings:
   event_subscriptions:
     request_url: ${APP_BASE_URL}/api/slack/events
     bot_events:
       - app_mention
+      - link_shared
   interactivity:
     is_enabled: true
     request_url: ${APP_BASE_URL}/api/slack/interactive
   org_deploy_enabled: false
   socket_mode_enabled: false
   token_rotation_enabled: false
-

@@ -117,17 +117,92 @@
 }
 
 .doc-block-shell {
+  position: relative;
   isolation: isolate;
+  overflow: hidden;
   border-color: transparent;
   background: rgba(255, 255, 255, 1);
   box-shadow: none;
   transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
 }
 
+.doc-block-shell > * {
+  position: relative;
+  z-index: 1;
+}
+
+.doc-block-shell::before,
+.doc-block-shell::after {
+  content: "";
+  position: absolute;
+  right: -22px;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.14;
+  transition: opacity 180ms ease, transform 220ms ease, filter 220ms ease;
+}
+
+.doc-block-shell::before {
+  top: -26px;
+  width: 136px;
+  height: 90px;
+  border-radius: 62% 38% 56% 44% / 36% 62% 38% 64%;
+  background:
+    radial-gradient(
+      circle at 28% 32%,
+      rgb(var(--accent-soft) / 0.96),
+      rgb(var(--accent) / 0.68) 34%,
+      rgb(var(--accent) / 0.12) 58%,
+      transparent 74%
+    ),
+    radial-gradient(
+      circle at 74% 44%,
+      rgb(var(--accent-lilac) / 0.9),
+      rgb(var(--accent-lilac) / 0.18) 32%,
+      transparent 56%
+    );
+  filter: blur(14px);
+  transform: rotate(-10deg);
+}
+
+.doc-block-shell::after {
+  bottom: -30px;
+  width: 144px;
+  height: 94px;
+  border-radius: 40% 60% 44% 56% / 62% 38% 58% 42%;
+  background:
+    radial-gradient(
+      circle at 34% 34%,
+      rgb(var(--accent-blush) / 0.92),
+      rgb(var(--accent-blush) / 0.26) 34%,
+      transparent 58%
+    ),
+    radial-gradient(
+      circle at 72% 60%,
+      rgb(var(--accent-lilac) / 0.84),
+      rgb(var(--accent-2) / 0.2) 32%,
+      transparent 58%
+    );
+  filter: blur(16px);
+  transform: rotate(12deg);
+}
+
 .doc-block-shell:hover {
   border-color: rgba(203, 213, 225, 1);
-  background: rgba(248, 250, 252, 0.6);
+  background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.04);
+}
+
+.doc-block-shell:hover::before {
+  opacity: 0.24;
+  filter: blur(12px) saturate(112%);
+  animation: docBlockBlobFloatA 3.2s ease-in-out infinite alternate;
+}
+
+.doc-block-shell:hover::after {
+  opacity: 0.22;
+  filter: blur(14px) saturate(112%);
+  animation: docBlockBlobFloatB 3.6s ease-in-out infinite alternate;
 }
 
 .block-side-action {
@@ -468,6 +543,25 @@
   pointer-events: none;
 }
 
+.workspace-accent-pill {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.workspace-accent-pill > * {
+  position: relative;
+  z-index: 1;
+}
+
+.workspace-accent-pill::before,
+.workspace-accent-pill::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+}
+
 .workspace-nav-link-active::before {
   right: -10px;
   top: -16px;
@@ -508,8 +602,8 @@
     ),
     radial-gradient(
       circle at 72% 62%,
-      rgba(255, 204, 92, 0.9),
-      rgba(255, 204, 92, 0.24) 30%,
+      rgb(var(--accent-lilac) / 0.9),
+      rgb(var(--accent-2) / 0.24) 30%,
       transparent 56%
     );
   filter: blur(8px) saturate(122%);
@@ -522,6 +616,83 @@
 }
 
 .workspace-nav-link-active:hover::after {
+  animation: workspaceBlobFloatB 3.2s ease-in-out infinite alternate;
+}
+
+.workspace-recent-link {
+  position: relative;
+  isolation: isolate;
+}
+
+.workspace-recent-link-active {
+  border-color: rgba(15, 23, 42, 0.96);
+  background:
+    linear-gradient(180deg, rgba(7, 14, 30, 1), rgba(10, 18, 38, 1));
+  color: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 16px 30px -24px rgba(15, 23, 42, 0.28);
+}
+
+.workspace-recent-link-active:hover {
+  border-color: rgba(15, 23, 42, 0.96);
+  background:
+    linear-gradient(180deg, rgba(7, 14, 30, 1), rgba(10, 18, 38, 1));
+  color: rgba(255, 255, 255, 0.98);
+}
+
+.workspace-recent-link-active::before {
+  right: -12px;
+  top: -18px;
+  width: 104px;
+  height: 62px;
+  border-radius: 60% 40% 62% 38% / 38% 60% 40% 62%;
+  background:
+    radial-gradient(
+      circle at 24% 30%,
+      rgb(var(--accent-soft) / 0.96),
+      rgb(var(--accent) / 0.82) 30%,
+      rgb(var(--accent) / 0.2) 52%,
+      transparent 70%
+    ),
+    radial-gradient(
+      circle at 76% 46%,
+      rgb(var(--accent-lilac) / 0.92),
+      rgb(var(--accent-lilac) / 0.26) 30%,
+      transparent 56%
+    );
+  filter: blur(8px) saturate(120%);
+  opacity: 0.98;
+  transform: rotate(-10deg);
+}
+
+.workspace-recent-link-active::after {
+  right: -8px;
+  bottom: -18px;
+  width: 110px;
+  height: 66px;
+  border-radius: 38% 62% 40% 60% / 60% 40% 62% 38%;
+  background:
+    radial-gradient(
+      circle at 30% 36%,
+      rgba(255, 124, 201, 0.94),
+      rgba(255, 124, 201, 0.3) 30%,
+      transparent 54%
+    ),
+    radial-gradient(
+      circle at 72% 62%,
+      rgb(var(--accent-lilac) / 0.88),
+      rgb(var(--accent-2) / 0.22) 30%,
+      transparent 56%
+    );
+  filter: blur(8px) saturate(122%);
+  opacity: 0.94;
+  transform: rotate(11deg);
+}
+
+.workspace-recent-link-active:hover::before {
+  animation: workspaceBlobFloatA 2.7s ease-in-out infinite alternate;
+}
+
+.workspace-recent-link-active:hover::after {
   animation: workspaceBlobFloatB 3.2s ease-in-out infinite alternate;
 }
 
@@ -629,13 +800,23 @@
     ),
     radial-gradient(
       circle at 74% 64%,
-      rgba(255, 204, 92, 0.86),
-      rgba(255, 204, 92, 0.2) 30%,
+      rgb(var(--accent-lilac) / 0.86),
+      rgb(var(--accent-2) / 0.2) 30%,
       transparent 56%
     );
   filter: blur(6px) saturate(120%);
   opacity: 0.92;
   transform: rotate(11deg);
+}
+
+.workspace-recent-icon-active {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.98);
+}
+
+.workspace-recent-meta-active {
+  color: rgba(255, 255, 255, 0.72);
 }
 
 .workspace-nav-compact-link-active:hover::before {
@@ -661,6 +842,24 @@
   }
   100% {
     transform: translate3d(-10px, -4px, 0) rotate(18deg) scale(1.07);
+  }
+}
+
+@keyframes docBlockBlobFloatA {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(-10deg) scale(1);
+  }
+  100% {
+    transform: translate3d(10px, 6px, 0) rotate(-2deg) scale(1.08);
+  }
+}
+
+@keyframes docBlockBlobFloatB {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(12deg) scale(1);
+  }
+  100% {
+    transform: translate3d(-8px, -6px, 0) rotate(18deg) scale(1.06);
   }
 }
 

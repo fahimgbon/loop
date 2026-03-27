@@ -1,13 +1,13 @@
 import { z } from "zod";
 
-import { getSession } from "@/src/server/auth";
+import { getRequestSession } from "@/src/server/auth";
 import { errorJson, json } from "@/src/server/http";
 import { withClient } from "@/src/server/db";
 import { listArtifacts } from "@/src/server/repo/artifacts";
 import { createArtifactFromTemplate } from "@/src/server/services/artifactService";
 
-export async function GET(_: Request, context: { params: Promise<{ workspaceSlug: string }> }) {
-  const session = await getSession();
+export async function GET(request: Request, context: { params: Promise<{ workspaceSlug: string }> }) {
+  const session = await getRequestSession(request);
   if (!session) return errorJson(401, "Unauthorized");
 
   const { workspaceSlug } = await context.params;
@@ -24,7 +24,7 @@ const createSchema = z.object({
 });
 
 export async function POST(request: Request, context: { params: Promise<{ workspaceSlug: string }> }) {
-  const session = await getSession();
+  const session = await getRequestSession(request);
   if (!session) return errorJson(401, "Unauthorized");
 
   const { workspaceSlug } = await context.params;

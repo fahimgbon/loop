@@ -220,7 +220,10 @@ export function WorkspaceShellClient(props: {
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={["workspace-nav-link", active ? "workspace-nav-link-active" : ""].join(" ")}
+                      className={[
+                        "workspace-nav-link",
+                        active ? "workspace-nav-link-active workspace-accent-pill" : "",
+                      ].join(" ")}
                       title={item.label}
                       aria-current={active ? "page" : undefined}
                     >
@@ -246,18 +249,18 @@ export function WorkspaceShellClient(props: {
                       href={href}
                       title={artifact.title}
                       className={[
-                        "min-w-0 overflow-hidden rounded-2xl border px-3 py-2.5 text-sm transition",
+                        "workspace-recent-link min-w-0 overflow-hidden rounded-2xl border px-3 py-2.5 text-sm transition",
                         active
-                          ? "border-slate-900 bg-slate-950 text-white"
+                          ? "workspace-recent-link-active workspace-accent-pill"
                           : "border-slate-300 bg-white text-slate-900 hover:border-slate-400 hover:bg-slate-50",
                       ].join(" ")}
                     >
                       <div className="flex min-w-0 items-start gap-2">
                         <span
                           className={[
-                            "mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border",
+                            "workspace-recent-icon mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border",
                             active
-                              ? "border-white/15 bg-white/10 text-white"
+                              ? "workspace-recent-icon-active"
                               : "border-slate-300 bg-white text-slate-600",
                           ].join(" ")}
                         >
@@ -265,7 +268,7 @@ export function WorkspaceShellClient(props: {
                         </span>
                         <div className="min-w-0">
                           <div className="truncate font-medium leading-5">{artifact.title}</div>
-                          <div className="mt-0.5 text-[11px] text-slate-600">
+                          <div className={["mt-0.5 text-[11px]", active ? "workspace-recent-meta-active" : "text-slate-600"].join(" ")}>
                             {new Date(artifact.updatedAt).toLocaleDateString()}
                           </div>
                         </div>

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { getSession } from "@/src/server/auth";
+import { getRequestSession } from "@/src/server/auth";
 import { withClient } from "@/src/server/db";
 import { getEnv } from "@/src/server/env";
 import { errorJson, json } from "@/src/server/http";
@@ -8,6 +8,7 @@ import {
   getGoogleInstallationForWorkspace,
   updateGoogleTokens,
 } from "@/src/server/repo/googleInstallations";
+import { createWebTextContribution } from "@/src/server/services/contributionService";
 import { importDocumentWithSmartFill } from "@/src/server/services/importService";
 
 const schema = z.object({
@@ -18,6 +19,7 @@ const schema = z.object({
   structureMode: z.enum(["template", "custom"]).optional(),
   templateSlug: z.string().optional(),
   folderId: z.string().uuid().optional(),
+  captureContribution: z.boolean().optional(),
 });
 
 function extractGoogleDocFileId(url: string) {
@@ -91,7 +93,7 @@ async function exportGoogleDocText(accessToken: string, fileId: string) {
 }
 
 export async function POST(request: Request, context: { params: Promise<{ workspaceSlug: string }> }) {
-  const session = await getSession();
+  const session = await getRequestSession(request);
   if (!session) return errorJson(401, "Unauthorized");
 
   const { workspaceSlug } = await context.params;
@@ -118,9 +120,46 @@ export async function POST(request: Request, context: { params: Promise<{ worksp
       templateSlug: parsed.data.templateSlug,
       folderId: parsed.data.folderId,
     });
-    return json({ ok: true, artifactId: imported.artifactId, mode: imported.mode });
+
+    let contributionId: string | null = null;
+    if (parsed.data.captureContribution) {
+      const contributionText = buildGoogleDocContributionText({
+        title: parsed.data.title?.trim() || null,
+        docUrl: parsed.data.docUrl,
+        body: text,
+      });
+      const contribution = await createWebTextContribution({
+        workspaceId: session.workspaceId,
+        userId: session.userId,
+        artifactId: imported.artifactId,
+        text: contributionText,
+        sourceRef: `google_doc:${fileId}:${imported.artifactId}`,
+      });
+      contributionId = contribution.id;
+    }
+
+    return json({
+      ok: true,
+      artifactId: imported.artifactId,
+      mode: imported.mode,
+      createdArtifact: imported.createdArtifact,
+      updatedBlocks: imported.updatedBlocks,
+      insertedBlocks: imported.insertedBlocks,
+      suggestedTemplateSlug: imported.suggestedTemplateSlug,
+      contributionId,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Google Doc import failed";
     return errorJson(400, message);
   }
+}
+
+function buildGoogleDocContributionText(input: { title: string | null; docUrl: string; body: string }) {
+  const pieces = [
+    input.title ? `Google Doc: ${input.title}` : "Google Doc import",
+    `Source: ${input.docUrl}`,
+    "",
+    input.body.trim(),
+  ].filter(Boolean);
+  return pieces.join("\n");
 }

@@ -1,7 +1,7 @@
-# Loop (MVP)
+# Aceync (MVP)
 Audio-first decision + backlog orchestration for small product teams.
 
-This repo is a **Slack-first** MVP that acts as a **system-of-record** (canonical artifacts live in Loop) and a **system-of-flow** (Slack/Calendar/Notion are capture + distribution surfaces).
+This repo is a **Slack-first** MVP that acts as a **system-of-record** (canonical artifacts live in Aceync) and a **system-of-flow** (Slack/Calendar/Notion are capture + distribution surfaces).
 
 ## What’s included (so far)
 - Workspaces + users (email/password) with cookie sessions
@@ -69,9 +69,13 @@ Set env vars in `.env.local`:
 Optional: use `docs/slack-manifest.example.yml` as a starting point (replace `${APP_BASE_URL}`).
 
 Slash command surface (minimum):
-- `/loop note <text>` → saves a contribution
-- `/loop request` → opens a modal to create a review request in the current channel
-- Mention the app → `@Loop ...` saves a contribution and replies in-thread
+- `/aceync note <text>` → saves a contribution
+- `/aceync search <query>` → searches artifacts + blocks and returns links
+- `/aceync recent` → shows recent artifacts and open review requests
+- `/aceync record` → opens an Aceync capture flow for audio/video from Slack
+- `/aceync request` → opens a modal to create a review request in the current channel
+- Mention the app → `@Aceync search roadmap`, `@Aceync recent`, or `@Aceync record` works in-thread
+- Share an Aceync artifact or review-request URL in Slack → auto-preview with Aceync context
 
 ## Google Workspace setup (Calendar + Docs)
 You’ll need a Google Cloud OAuth app configured with:
@@ -80,7 +84,7 @@ You’ll need a Google Cloud OAuth app configured with:
 Enable Google Calendar API + Google Drive API, then set env vars:
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
 
-After connecting in the Workspace → Integrations panel, set a default calendar ID (e.g. `primary`) and click **Sync now**. Loop will scan recent events with Google Docs attached and turn them into structured updates.
+After connecting in the Workspace → Integrations panel, set a default calendar ID (e.g. `primary`) and click **Sync now**. Aceync will scan recent events with Google Docs attached and turn them into structured updates.
 
 ## Scripts
 - `npm run dev` – Next dev server
@@ -89,7 +93,7 @@ After connecting in the Workspace → Integrations panel, set a default calendar
 - `npm run worker` – background job runner (optional in dev; required if `INLINE_JOBS=0`)
 
 ## AI (transcription/classification)
-Loop uses a simple job queue (`jobs` table) processed by `npm run worker`.
+Aceync uses a simple job queue (`jobs` table) processed by `npm run worker`.
 
 - `AI_PROVIDER=mock` (default): writes mock transcripts + heuristic intent classification.
 - `AI_PROVIDER=openai`: uses OpenAI for audio transcription (set `OPENAI_API_KEY`); intent classification still uses heuristics until prompts are locked.

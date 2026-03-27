@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { InboxItem } from "@/src/components/inbox/InboxItem";
+import { AutoRefresh } from "@/src/components/live/AutoRefresh";
 import { getSession } from "@/src/server/auth";
 import { withClient } from "@/src/server/db";
 import { listInboxContributions } from "@/src/server/repo/contributions";
@@ -22,6 +23,7 @@ export default async function InboxPage(props: { params: Promise<{ workspaceSlug
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-8">
+      <AutoRefresh intervalMs={3000} />
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Inbox</h1>

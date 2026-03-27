@@ -30,7 +30,7 @@ export async function POST(request: Request) {
 
   const payload = JSON.parse(payloadRaw) as SlackViewSubmissionPayload;
   if (payload.type !== "view_submission") return json({ ok: true });
-  if (payload.view.callback_id !== "loop_request_feedback") return json({ ok: true });
+  if (payload.view.callback_id !== "aceync_request_feedback") return json({ ok: true });
 
   const teamId = payload.team.id;
   const installation = await withClient((client) => getSlackInstallationForTeam(client, teamId));
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
   if (!artifactId) {
     return json({
       response_action: "errors",
-      errors: { artifact: "Paste a Loop artifact URL or UUID." },
+      errors: { artifact: "Paste an Aceync artifact URL or UUID." },
     });
   }
   const title = (values.title?.title?.value ?? "").trim();
